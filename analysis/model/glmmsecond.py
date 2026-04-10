@@ -1,12 +1,11 @@
-from pathlib import Path
 import warnings
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
-
-
 
 
 def prepare_df(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
@@ -16,7 +15,12 @@ def prepare_df(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     df["condition"] = df["category"].apply(
         lambda c: "no_llm" if c == "dummy" else "llm"
     )
-    df["expertise"] = df["participant"].str.replace("sub-", "", regex=False).map(expertise_map).fillna("unknown")
+    df["expertise"] = (
+        df["participant"]
+        .str.replace("sub-", "", regex=False)
+        .map(expertise_map)
+        .fillna("unknown")
+    )
     df["condition"] = pd.Categorical(df["condition"], categories=["no_llm", "llm"])
     df["expertise"] = pd.Categorical(df["expertise"], categories=["novice", "expert"])
     features = cfg["glmm2"]["continuous"] + cfg["glmm2"]["count"]
@@ -46,8 +50,9 @@ def run_glmm(df: pd.DataFrame, outcome: str):
     return model
 
 
-def run_all(cfg: dict, root: Path,
-            dataframes: dict, verbose: bool = True) -> pd.DataFrame:
+def run_all(
+    cfg: dict, root: Path, dataframes: dict, verbose: bool = True
+) -> pd.DataFrame:
     """Run GLMM on all datasets.
 
     Args:
@@ -57,7 +62,7 @@ def run_all(cfg: dict, root: Path,
         verbose:    Print progress.
     """
     processed_dir = root / cfg["paths"]["processed"]
-    features      = cfg["glmm2"]["continuous"] + cfg["glmm2"]["count"]
+    features = cfg["glmm2"]["continuous"] + cfg["glmm2"]["count"]
     rows = []
     for name, df in dataframes.items():
         prepared = prepare_df(df, cfg)
@@ -71,14 +76,16 @@ def run_all(cfg: dict, root: Path,
             if model is None:
                 continue
             for term in model.params.index:
-                rows.append({
-                    "dataset":  name,
-                    "outcome":  outcome,
-                    "term":     term,
-                    "coef":     model.params[term],
-                    "se":       model.bse.get(term),
-                    "p_value":  model.pvalues.get(term),
-                })
+                rows.append(
+                    {
+                        "dataset": name,
+                        "outcome": outcome,
+                        "term": term,
+                        "coef": model.params[term],
+                        "se": model.bse.get(term),
+                        "p_value": model.pvalues.get(term),
+                    }
+                )
             if verbose:
                 print(f"  {outcome}: fitted")
 
@@ -94,5 +101,3 @@ def run_all(cfg: dict, root: Path,
             print(f"\nResults saved -> {out.relative_to(root)}")
             print(results.to_string(index=False))
     return results
-
-

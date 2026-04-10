@@ -1,5 +1,5 @@
 from analysis.features.eyetracking_data import run_fixations, run_saccades
-from analysis.features.AOI_fixation import run_aoi_fixations
+from analysis.features.aoi_fixation import run_aoi_fixations
 
 
 def run_eyetracking_features(cfg: dict, preloaded: dict | None = None,
