@@ -1,0 +1,116 @@
+sub:
+  - P001
+  - P002
+  - P003
+  - P004
+  - P005
+  - P006
+  - P007
+  - P008
+  - P009
+  - P010
+
+
+# Participant expertise: expert or novice
+# Add each subject ID here; subjects not listed default to 'unknown'
+expertise:
+  P001: expert
+  P002: expert
+  P003: novice
+  P004: novice
+  P005: expert
+  P006: novice
+  P007: novice
+  P008: expert
+  P009: novice
+  P010: expert
+
+
+paths:
+  raw:          data/raw             # raw XDF files per subject
+  intermediate: data/intermediate   # output of xdf.py  (per-trial h5/csv)
+  processed:    data/processed       # output of fixations/saccades
+
+xdf:
+  game_stream: SARGame
+  eye_stream: TobiiEyeTracker
+  trial_field: trial_id
+  reset_field: step_count
+  reset_drop_threshold: 5
+  active_status_field: mission_status
+  active_status_value: continue
+  output:
+    subject_dir_template: "sub-{subject_id}"
+    run_key_template: "{trial_id}_run{run_index}"
+    best_dir_template: "{base}_best"
+    run_suffix_pattern: "_run\\d+$"
+    write_csv: true
+    write_hdf: true
+    files:
+      game_csv: game.csv
+      eyetracker_csv: eyetracker.csv
+      game_h5: game.h5
+      eyetracker_h5: eyetracker.h5
+  victim_count:
+    columns: [saved_victims]
+    contains:
+      - [victim, saved]
+      - [victim]
+
+glmm2:
+  continuous: [victims_per_step, mean_fixation_dur_ms, std_pupil_diam,
+               game_area_pct_dur, chat_panel_pct_dur, offscreen_pct_dur]
+  count:      [n_fixations, n_saccades, saved_victims]
+
+eyetracker:
+  x_col:       avg_gaze_point_x   # normalized 0-1 (no PsychoPy window set during recording)
+  y_col:       avg_gaze_point_y   # normalized 0-1 (no PsychoPy window set during recording)
+  time_col:    timestamp
+  screen_w:    1920       # screen width in pixels  (used to scale normalized -> pixels)
+  screen_h:    1080       # screen height in pixels (used to scale normalized -> pixels)
+  missing:     0.0        # value used for missing/invalid samples
+
+  channels:                 # column from tobii
+    - device_time_stamp
+    - avg_gaze_point_x
+    - avg_gaze_point_y
+    - avg_pupil_diam
+    - avg_eye_pos_x
+    - avg_eye_pos_y
+    - avg_eye_pos_z
+    - avg_eye_distance
+    - eye_validities
+
+fixation:
+  maxdist: 25    # max inter-sample distance in pixels
+  mindur:  100   # min fixation duration in ms
+  #maxdur:  700   # max fixation duration in ms (removes tracking artifacts)
+
+saccade:
+  minlen:  10
+  maxvel:  1000   #pixel/s (alsmost 2200 deg/s at 72cm viewing distance) https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
+  maxacc:  340   # acceleration threshold in pixels/s²   https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
+  maxdur:  150   # max saccade duration in ms (post-detection filter)
+
+
+aoi:
+  - name:  game_area      
+    x_min: 150
+    y_min: 0
+    x_max: 1230
+    y_max: 1080
+
+  - name:  info_panel       
+    x_min: 1230
+    y_min: 0
+    x_max: 1770
+    y_max: 540
+
+  - name:  chat_panel      
+    x_min: 1230
+    y_min: 540
+    x_max: 1770
+    y_max: 1080
+
+ 
+

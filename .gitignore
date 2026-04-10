@@ -1,0 +1,53 @@
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.egg-info/
+.eggs/
+dist/
+build/
+.env
+.venv/
+venv/
+
+# Data files (large/binary)
+data/
+results/
+*.csv
+*.xdf
+*.h5
+*.hdf5
+*.parquet
+*.feather
+*.pkl
+*.pickle
+*.npy
+*.npz
+*.mat
+*.edf
+*.bdf
+*.fif
+
+# Other large or sensitive files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp
+*.tmp
+*.log
+tempCodeRunnerFile.py
+igaze/
+rescue-grid/
