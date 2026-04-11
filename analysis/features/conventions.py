@@ -21,12 +21,11 @@ SACCADE_COLUMNS = [
 
 
 def best_suffix(cfg: dict) -> str:
-    return cfg.get("naming", {}).get("best_suffix", DEFAULT_BEST_SUFFIX)
+    return DEFAULT_BEST_SUFFIX
 
 
 def category_names(cfg: dict) -> list[str]:
-    names = cfg.get("naming", {}).get("categories", DEFAULT_CATEGORY_NAMES)
-    return [str(name) for name in names]
+    return [str(name) for name in DEFAULT_CATEGORY_NAMES]
 
 
 def detect_category(trial_id: str, cfg: dict) -> str:
