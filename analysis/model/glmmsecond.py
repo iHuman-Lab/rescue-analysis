@@ -12,15 +12,25 @@ def prepare_df(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     """Add condition and expertise columns, keep only FEATURES + id cols."""
     expertise_map = {str(k): str(v) for k, v in cfg.get("expertise", {}).items()}
     df = df.copy()
-    df["condition"] = df["category"].apply(
+    derived_condition = df["category"].apply(
         lambda c: "no_llm" if c == "dummy" else "llm"
     )
-    df["expertise"] = (
+    if "condition" in df.columns:
+        df["condition"] = df["condition"].fillna(derived_condition)
+    else:
+        df["condition"] = derived_condition
+
+    derived_expertise = (
         df["participant"]
         .str.replace("sub-", "", regex=False)
         .map(expertise_map)
         .fillna("unknown")
     )
+    if "expertise" in df.columns:
+        df["expertise"] = df["expertise"].fillna(derived_expertise)
+    else:
+        df["expertise"] = derived_expertise
+
     df["condition"] = pd.Categorical(df["condition"], categories=["no_llm", "llm"])
     df["expertise"] = pd.Categorical(df["expertise"], categories=["novice", "expert"])
     features = cfg["glmm2"]["continuous"] + cfg["glmm2"]["count"]

@@ -30,6 +30,39 @@ def _preprocess_eye(eye_df: pd.DataFrame, eye_cfg: dict) -> pd.DataFrame:
     return eye_df
 
 
+def _iter_preprocessed_trials(cfg: dict, preloaded: dict | None = None):
+    if preloaded is None:
+        preloaded = load_all_subjects(cfg)
+
+    eye_cfg = cfg.get("eyetracker", {})
+    subjects = [str(s) for s in cfg.get("sub", [])]
+
+    for sid in subjects:
+        data = preloaded.get(sid, {})
+        if not data:
+            print(f"[SKIP] {sid}: no trial data")
+            continue
+
+        print(f"[SUB]  {sid}")
+        trials = []
+        for trial_id, streams in data.items():
+            eye_df = streams["eyetracker"]
+            if eye_df.empty:
+                print(f"         {trial_id:35s}  empty eyetracker — skipping")
+                continue
+            trials.append((trial_id, _preprocess_eye(eye_df, eye_cfg)))
+
+        yield sid, eye_cfg, trials
+
+
+def _eye_arrays(eye_df: pd.DataFrame, eye_cfg: dict) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    return (
+        eye_df[eye_cfg["x_col"]].to_numpy(dtype=float),
+        eye_df[eye_cfg["y_col"]].to_numpy(dtype=float),
+        eye_df[eye_cfg["time_col"]].to_numpy(dtype=float),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Fixations
 # ---------------------------------------------------------------------------
@@ -56,42 +89,28 @@ def run_fixations(cfg: dict, preloaded: dict | None = None) -> dict:
     Returns:
         {subject_id: {trial_id: {"fixations": DataFrame, "summary": dict}}}
     """
-    if preloaded is None:
-        preloaded = load_all_subjects(cfg)
-
-    subjects = [str(s) for s in cfg.get("sub", [])]
-    eye_cfg  = cfg.get("eyetracker", {})
-    fix_cfg  = cfg.get("fixation", {})
-    missing  = eye_cfg["missing"]
-    maxdist  = fix_cfg["maxdist"]
-    mindur   = fix_cfg["mindur"]
+    fix_cfg = cfg.get("fixation", {})
+    params = {
+        "missing": cfg.get("eyetracker", {})["missing"],
+        "maxdist": fix_cfg["maxdist"],
+        "mindur": fix_cfg["mindur"],
+    }
 
     results: dict = {}
 
-    for sid in subjects:
-        data = preloaded.get(sid, {})
-        if not data:
-            print(f"[SKIP] {sid}: no trial data")
-            continue
-
-        print(f"[SUB]  {sid}")
+    for sid, eye_cfg, trials in _iter_preprocessed_trials(cfg, preloaded=preloaded):
         results[sid] = {}
 
-        for trial_id, streams in data.items():
-            eye_df = streams["eyetracker"]
-            if eye_df.empty:
-                print(f"         {trial_id:35s}  empty eyetracker — skipping")
-                continue
-
-            eye_df = _preprocess_eye(eye_df, eye_cfg)
+        for trial_id, eye_df in trials:
+            x, y, time = _eye_arrays(eye_df, eye_cfg)
 
             _, Efix = fixation_detection(
-                x=eye_df[eye_cfg["x_col"]].to_numpy(),
-                y=eye_df[eye_cfg["y_col"]].to_numpy(),
-                time=eye_df[eye_cfg["time_col"]].to_numpy(),
-                missing=missing,
-                maxdist=maxdist,
-                mindur=mindur,
+                x=x,
+                y=y,
+                time=time,
+                missing=params["missing"],
+                maxdist=params["maxdist"],
+                mindur=params["mindur"],
             )
             summary = fixation_summary(Efix)
 
@@ -123,44 +142,30 @@ def run_saccades(cfg: dict, preloaded: dict | None = None) -> dict:
     Returns:
         {subject_id: {trial_id: {"saccades": DataFrame, "summary": dict}}}
     """
-    if preloaded is None:
-        preloaded = load_all_subjects(cfg)
-
-    subjects = [str(s) for s in cfg.get("sub", [])]
-    eye_cfg  = cfg.get("eyetracker", {})
-    sac_cfg  = cfg.get("saccade", {})
-    missing  = eye_cfg["missing"]
-    minlen   = sac_cfg["minlen"]
-    maxvel   = sac_cfg["maxvel"]
-    maxacc   = sac_cfg["maxacc"]
+    sac_cfg = cfg.get("saccade", {})
+    params = {
+        "missing": cfg.get("eyetracker", {})["missing"],
+        "minlen": sac_cfg["minlen"],
+        "maxvel": sac_cfg["maxvel"],
+        "maxacc": sac_cfg["maxacc"],
+    }
 
     results: dict = {}
 
-    for sid in subjects:
-        data = preloaded.get(sid, {})
-        if not data:
-            print(f"[SKIP] {sid}: no trial data")
-            continue
-
-        print(f"[SUB]  {sid}")
+    for sid, eye_cfg, trials in _iter_preprocessed_trials(cfg, preloaded=preloaded):
         results[sid] = {}
 
-        for trial_id, streams in data.items():
-            eye_df = streams["eyetracker"]
-            if eye_df.empty:
-                print(f"         {trial_id:35s}  empty eyetracker — skipping")
-                continue
-
-            eye_df = _preprocess_eye(eye_df, eye_cfg)
+        for trial_id, eye_df in trials:
+            x, y, time = _eye_arrays(eye_df, eye_cfg)
 
             _, end_saccades = saccade_detection(
-                eye_df[eye_cfg["x_col"]].to_numpy(dtype=float),
-                eye_df[eye_cfg["y_col"]].to_numpy(dtype=float),
-                eye_df[eye_cfg["time_col"]].to_numpy(dtype=float),
-                missing=missing,
-                minlen=minlen,
-                maxvel=maxvel,
-                maxacc=maxacc,
+                x,
+                y,
+                time,
+                missing=params["missing"],
+                minlen=params["minlen"],
+                maxvel=params["maxvel"],
+                maxacc=params["maxacc"],
             )
 
             rows = []
