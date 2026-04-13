@@ -1,13 +1,9 @@
-from pathlib import Path
-
 import pandas as pd
 
 from analysis.prepare_data.xdf import load_all_subjects
 from analysis.features.conventions import (
     DEFAULT_OFFSCREEN_LABEL,
-    output_file,
     strip_run_suffix,
-    subject_label,
 )
 from analysis.features.eyetracking_data import run_eyetracking
 
@@ -16,16 +12,13 @@ from analysis.features.eyetracking_data import run_eyetracking
 # ---------------------------------------------------------------------------
 
 def run_aoi_fixations(cfg: dict, eyetracking: dict | None = None,
-                      preloaded: dict | None = None,
-                      root: Path | None = None) -> dict:
+                      preloaded: dict | None = None) -> dict:
     """Label fixations with AOIs and compute transition matrices."""
     if eyetracking is None:
         preloaded = load_all_subjects(cfg) if preloaded is None else preloaded
         eyetracking = run_eyetracking(cfg, preloaded=preloaded)
 
-    root = root or Path(__file__).resolve().parents[2]
     aois          = cfg.get("aoi", [])
-    processed_dir = root / cfg["paths"]["processed"]
 
     if not aois:
         print("WARNING: no AOIs defined in config — all fixations will be labelled 'offscreen'")
@@ -45,14 +38,7 @@ def run_aoi_fixations(cfg: dict, eyetracking: dict | None = None,
             fix_aoi = label_fixations(fix_df, aois)
             trans   = aoi_transition_matrix(fix_aoi, aois)
 
-            out_dir = processed_dir / subject_label(sid, cfg) / trial_id
-            out_dir.mkdir(parents=True, exist_ok=True)
-            fix_aoi.to_csv(out_dir / output_file(cfg, "fixation_aoi_file"), index=False)
-            trans.to_csv(out_dir / output_file(cfg, "aoi_transitions_file"))
-
             aoi_results[sid][trial_id] = {"fix_aoi": fix_aoi, "transitions": trans}
-
-    _save_aggregated_transitions(aoi_results, aois, processed_dir, cfg)
 
     return aoi_results
 
@@ -81,11 +67,11 @@ def aoi_transition_matrix(fix_aoi_df: pd.DataFrame, aois: list[dict]) -> pd.Data
             matrix.loc[src, dst] += 1
     return matrix
 
-def _save_aggregated_transitions(aoi_results: dict, aois: list[dict], processed_dir: Path, cfg: dict):
-    """Aggregate and save transition matrices across all trials."""
+def aggregate_transitions(aoi_results: dict, aois: list[dict], cfg: dict) -> tuple[pd.DataFrame, dict]:
+    """Aggregate transition matrices across all trials."""
     labels = [a["name"] for a in aois]
     if not labels:
-        return
+        return pd.DataFrame(), {}
 
     total_trans = pd.DataFrame(0, index=labels, columns=labels)
     by_trial = {}
@@ -98,7 +84,4 @@ def _save_aggregated_transitions(aoi_results: dict, aois: list[dict], processed_
             base = strip_run_suffix(trial_id, cfg)
             by_trial[base] = by_trial.get(base, pd.DataFrame(0, index=labels, columns=labels)) + mat
 
-    total_trans.to_csv(processed_dir / output_file(cfg, "aoi_transitions_all_file"))
-    for base, mat in by_trial.items():
-        out_name = output_file(cfg, "aoi_transitions_by_trial_template").format(trial=base)
-        mat.to_csv(processed_dir / out_name)
+    return total_trans, by_trial

@@ -7,5 +7,5 @@ def run_eyetracking_features(cfg: dict, preloaded: dict | None = None,
     fixations   = run_fixations(cfg, preloaded=preloaded)
     saccades    = run_saccades(cfg, preloaded=preloaded)
     eyetracking = {"fixations": fixations, "saccades": saccades}
-    eyetracking["aoi"] = run_aoi_fixations(cfg, eyetracking=eyetracking, root=root)
+    eyetracking["aoi"] = run_aoi_fixations(cfg, eyetracking=eyetracking, preloaded=preloaded)
     return eyetracking

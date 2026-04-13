@@ -82,9 +82,8 @@ def extract_game_features(game_df: pd.DataFrame) -> dict:
 # Public API
 # ---------------------------------------------------------------------------
 
-def run_extract_features(cfg: dict, preloaded: dict, eyetracking: dict,
-                         processed_dir: Path) -> pd.DataFrame:
-    """Extract per-trial features for _best trials and save best_features.csv.
+def run_extract_features(cfg: dict, preloaded: dict, eyetracking: dict) -> pd.DataFrame:
+    """Extract per-trial features for _best trials.
 
     Args:
         cfg:         Full config dict.
@@ -93,7 +92,6 @@ def run_extract_features(cfg: dict, preloaded: dict, eyetracking: dict,
                      {"fixations": {sid: {trial_id: {"fixations": df, ...}}},
                       "saccades":  {sid: {trial_id: {"saccades":  df, ...}}},
                       "aoi":       {sid: {trial_id: {"fix_aoi": df, "transitions": df, ...}}}}
-        processed_dir: Output directory for best_features.csv.
 
     Returns:
         DataFrame with one row per best trial.
@@ -148,9 +146,4 @@ def run_extract_features(cfg: dict, preloaded: dict, eyetracking: dict,
                   f"fixations={row.get('n_fixations', '?')}  saccades={row.get('n_saccades', '?')}")
 
     df = pd.DataFrame(rows)
-    if not df.empty:
-        out = processed_dir / output_file(cfg, "best_features_file")
-        out.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(out, index=False)
-        print(f"\nbest_features -> {out}")
     return df

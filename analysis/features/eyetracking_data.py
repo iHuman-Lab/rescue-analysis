@@ -86,24 +86,16 @@ def run_fixations(cfg: dict, preloaded: dict | None = None) -> dict:
             eye_df = _preprocess_eye(eye_df, eye_cfg)
 
             _, Efix = fixation_detection(
-                x=eye_df[eye_cfg["x_col"]].to_numpy(),
-                y=eye_df[eye_cfg["y_col"]].to_numpy(),
-                time=eye_df[eye_cfg["time_col"]].to_numpy(),
+                x=eye_df[eye_cfg["x_col"]].to_numpy(dtype=float),
+                y=eye_df[eye_cfg["y_col"]].to_numpy(dtype=float),
+                time=eye_df[eye_cfg["time_col"]].to_numpy(dtype=float),
                 missing=missing,
                 maxdist=maxdist,
                 mindur=mindur,
             )
-            summary = fixation_summary(Efix)
-
-            print(f"         {trial_id:35s}  "
-                  f"fixations={summary['count']:>4}  "
-                  f"mean_dur={summary['mean_duration_ms']:>7.1f}ms")
-
-            fix_df = (
-                pd.DataFrame(Efix, columns=FIXATION_COLUMNS)
-                if Efix else pd.DataFrame(columns=FIXATION_COLUMNS)
-            )
-            results[sid][trial_id] = {"fixations": fix_df, "summary": summary}
+            
+            fix_df = pd.DataFrame(Efix or [], columns=FIXATION_COLUMNS)
+            results[sid][trial_id] = {"fixations": fix_df, "summary": fixation_summary(Efix)}
 
     return results
 
@@ -164,7 +156,7 @@ def run_saccades(cfg: dict, preloaded: dict | None = None) -> dict:
             )
 
             rows = []
-            for sac_id, sac in enumerate(end_saccades, start=1):
+            for sac_id, sac in enumerate(end_saccades or [], start=1):
                 start_t, end_t, duration, xs, ys, xe, ye = sac
                 rows.append({
                     "saccade_id":  sac_id,
@@ -178,27 +170,14 @@ def run_saccades(cfg: dict, preloaded: dict | None = None) -> dict:
                     "amplitude":   float(((xe - xs) ** 2 + (ye - ys) ** 2) ** 0.5),
                 })
 
-            n        = len(rows)
-            total_ms = sum(r["duration_ms"] for r in rows)
-            mean_dur = total_ms / n if n > 0 else 0.0
-            mean_amp = float(np.mean([r["amplitude"] for r in rows])) if rows else 0.0
-
-            print(f"         {trial_id:35s}  "
-                  f"saccades={n:>4}  "
-                  f"mean_dur={mean_dur:>6.1f}ms  "
-                  f"mean_amp={mean_amp:>6.1f}px")
-
-            sac_df = (
-                pd.DataFrame(rows)
-                if rows else pd.DataFrame(columns=SACCADE_COLUMNS)
-            )
+            sac_df = pd.DataFrame(rows, columns=SACCADE_COLUMNS)
             results[sid][trial_id] = {
                 "saccades": sac_df,
                 "summary": {
-                    "n_saccades":        n,
-                    "total_duration_ms": total_ms,
-                    "mean_duration_ms":  mean_dur,
-                    "mean_amplitude_px": mean_amp,
+                    "n_saccades":        len(sac_df),
+                    "total_duration_ms": float(sac_df["duration_ms"].sum()) if not sac_df.empty else 0.0,
+                    "mean_duration_ms":  float(sac_df["duration_ms"].mean()) if not sac_df.empty else 0.0,
+                    "mean_amplitude_px": float(sac_df["amplitude"].mean()) if not sac_df.empty else 0.0,
                 },
             }
 

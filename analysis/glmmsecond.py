@@ -7,6 +7,7 @@ import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
+from analysis.features.io import save_glmm_results
 from analysis.features.conventions import condition_for_category
 
 
@@ -107,9 +108,7 @@ def run_all(
         _, fdr, _, _ = multipletests(results.loc[valid, "p_value"], method="fdr_bh")
         results["p_value_fdr"] = np.nan
         results.loc[valid, "p_value_fdr"] = fdr
-        processed_dir.mkdir(parents=True, exist_ok=True)
-        out = processed_dir / "glmm2_results.csv"
-        results.to_csv(out, index=False)
+        out = save_glmm_results(results, processed_dir, cfg)
         if verbose:
             print(f"\nResults saved -> {out.relative_to(root)}")
             print(results.to_string(index=False))
