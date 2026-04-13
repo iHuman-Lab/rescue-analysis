@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
@@ -40,8 +41,12 @@ def prepare_df(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     return df[keep]
 
 
-def run_glmm(df: pd.DataFrame, outcome: str):
-    """Fit a mixed LM for one outcome: condition * expertise, random intercept per participant."""
+def run_glmm(df: pd.DataFrame, outcome: str, count_features: list[str]):
+    """Fit a simple model for one outcome.
+
+    Continuous outcomes use a mixed linear model with participant random intercepts.
+    Count outcomes use a Poisson GLM.
+    """
     clean = df.dropna(subset=[outcome]).copy()
     if clean.empty:
         return None
@@ -53,7 +58,10 @@ def run_glmm(df: pd.DataFrame, outcome: str):
         warnings.simplefilter("ignore", ConvergenceWarning)
         warnings.simplefilter("ignore", RuntimeWarning)
         try:
-            model = smf.mixedlm(formula, clean, groups=clean["participant"]).fit()
+            if outcome in count_features:
+                model = smf.glm(formula, clean, family=sm.families.Poisson()).fit()
+            else:
+                model = smf.mixedlm(formula, clean, groups=clean["participant"]).fit()
         except np.linalg.LinAlgError:
             warnings.warn(f"Skipping '{outcome}': singular matrix.", RuntimeWarning)
             return None
@@ -72,7 +80,9 @@ def run_all(
         verbose:    Print progress.
     """
     processed_dir = root / cfg["paths"]["processed"]
-    features = cfg["glmm2"]["continuous"] + cfg["glmm2"]["count"]
+    continuous_features = cfg["glmm2"]["continuous"]
+    count_features = cfg["glmm2"]["count"]
+    features = continuous_features + count_features
     rows = []
     for name, df in dataframes.items():
         prepared = prepare_df(df, cfg)
@@ -82,7 +92,7 @@ def run_all(
         for outcome in features:
             if outcome not in prepared.columns:
                 continue
-            model = run_glmm(prepared, outcome)
+            model = run_glmm(prepared, outcome, count_features)
             if model is None:
                 continue
             for term in model.params.index:
