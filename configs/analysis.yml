@@ -1,4 +1,15 @@
-sub: [P001, P002, P003, P004, P005, P006, P007, P008, P009, P010]
+sub:
+  - P001
+  - P002
+  - P003
+  - P004
+  - P005
+  - P006
+  - P007
+  - P008
+  - P009
+  - P010
+
 
 # Participant expertise: expert or novice
 # Add each subject ID here; subjects not listed default to 'unknown'
@@ -14,10 +25,24 @@ expertise:
   P009: novice
   P010: expert
 
+
 paths:
-  raw: data/raw # raw XDF files per subject
-  intermediate: data/intermediate # output of xdf.py  (per-trial h5/csv)
-  processed: data/processed # output of fixations/saccades
+  raw:          data/raw             # raw XDF files per subject
+  intermediate: data/intermediate   # output of xdf.py  
+  processed:    data/processed       # output of fixations/saccades
+
+analysis:
+  categories: [gemini, openai, dummy]
+  condition_by_category:
+    dummy: no_llm
+    gemini: llm
+    openai: llm
+  outputs:
+    best_features_file: best_features.csv
+    fixation_aoi_file: fixations_aoi.csv
+    aoi_transitions_file: aoi_transitions.csv
+    aoi_transitions_all_file: aoi_transitions_all.csv
+    aoi_transitions_by_trial_template: "aoi_transitions_{trial}.csv"
 
 xdf:
   game_stream: SARGame
@@ -28,9 +53,9 @@ xdf:
   active_status_field: mission_status
   active_status_value: continue
   output:
-    subject_dir_template: 'sub-{subject_id}'
-    run_key_template: '{trial_id}_run{run_index}'
-    best_dir_template: '{base}_best'
+    subject_dir_template: "sub-{subject_id}"
+    run_key_template: "{trial_id}_run{run_index}"
+    best_dir_template: "{base}_best"
     run_suffix_pattern: "_run\\d+$"
     write_csv: true
     write_hdf: true
@@ -46,63 +71,62 @@ xdf:
       - [victim]
 
 glmm2:
-  continuous:
-    [
-      victims_per_step,
-      mean_fixation_dur_ms,
-      std_pupil_diam,
-      game_area_pct_dur,
-      chat_panel_pct_dur,
-      offscreen_pct_dur,
-    ]
-  count: [n_fixations, n_saccades, saved_victims]
+  verbose: true
+  output_file: glmm2_results.csv
+  group_col: participant
+  continuous: [victims_per_step, total_reward, mean_fixation_dur_ms, std_pupil_diam,
+               game_area_pct_dur, chat_panel_pct_dur, offscreen_pct_dur]
+  count:      [n_fixations, n_saccades, saved_victims]
 
 eyetracker:
-  x_col: avg_gaze_point_x # normalized 0-1 (no PsychoPy window set during recording)
-  y_col: avg_gaze_point_y # normalized 0-1 (no PsychoPy window set during recording)
-  time_col: timestamp
-  screen_w: 1920 # screen width in pixels  (used to scale normalized -> pixels)
-  screen_h: 1080 # screen height in pixels (used to scale normalized -> pixels)
-  missing: 0.0 # value used for missing/invalid samples
+  x_col:       avg_gaze_point_x   # normalized 0-1 (no PsychoPy window set during recording)
+  y_col:       avg_gaze_point_y   # normalized 0-1 (no PsychoPy window set during recording)
+  time_col:    timestamp
+  screen_w:    1920       # screen width in pixels  (used to scale normalized -> pixels)
+  screen_h:    1080       # screen height in pixels (used to scale normalized -> pixels)
+  missing:     0.0        # value used for missing/invalid samples
 
-  channels: [
-      device_time_stamp,
-      avg_gaze_point_x,
-      avg_gaze_point_y,
-      avg_pupil_diam,
-      avg_eye_pos_x,
-      avg_eye_pos_y,
-      avg_eye_pos_z,
-      avg_eye_distance,
-      eye_validities,
-    ] # columns from tobii
+  channels:                 # column from tobii
+    - device_time_stamp
+    - avg_gaze_point_x
+    - avg_gaze_point_y
+    - avg_pupil_diam
+    - avg_eye_pos_x
+    - avg_eye_pos_y
+    - avg_eye_pos_z
+    - avg_eye_distance
+    - eye_validities
 
 fixation:
-  maxdist: 25 # max inter-sample distance in pixels
-  mindur: 100 # min fixation duration in ms
+  maxdist: 25    # max inter-sample distance in pixels
+  mindur:  100   # min fixation duration in ms
   #maxdur:  700   # max fixation duration in ms (removes tracking artifacts)
 
 saccade:
-  minlen: 10
-  maxvel: 1000 #pixel/s (alsmost 2200 deg/s at 72cm viewing distance) https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
-  maxacc: 340 # acceleration threshold in pixels/s²   https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
-  maxdur: 150 # max saccade duration in ms (post-detection filter)
+  minlen:  10
+  maxvel:  1000   #pixel/s (alsmost 2200 deg/s at 72cm viewing distance) https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
+  maxacc:  340   # acceleration threshold in pixels/s²   https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
+  maxdur:  150   # max saccade duration in ms (post-detection filter)
+
 
 aoi:
-  - name: game_area
+  - name:  game_area      
     x_min: 150
     y_min: 0
     x_max: 1230
     y_max: 1080
 
-  - name: info_panel
+  - name:  info_panel       
     x_min: 1230
     y_min: 0
     x_max: 1770
     y_max: 540
 
-  - name: chat_panel
+  - name:  chat_panel      
     x_min: 1230
     y_min: 540
     x_max: 1770
     y_max: 1080
+
+ 
+
