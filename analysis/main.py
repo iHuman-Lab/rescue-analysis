@@ -8,8 +8,8 @@ from analysis.features.eyetracking_features import run_eyetracking_features
 from analysis.model.glmmsecond import run_all as run_glmmsecond
 from analysis.utils import skip_run
 
-ROOT = Path(__file__).resolve().parent
-CONFIG = ROOT / "configs" / "config_analysis.yml"
+ROOT = Path(__file__).resolve().parents[1]
+CONFIG = ROOT / "configs" / "analysis.yml"
 
 if __name__ == "__main__":
     with open(CONFIG) as f:
