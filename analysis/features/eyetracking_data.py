@@ -34,17 +34,6 @@ def _preprocess_eye(eye_df: pd.DataFrame, eye_cfg: dict) -> pd.DataFrame:
 # Fixations
 # ---------------------------------------------------------------------------
 
-def fixation_summary(Efix: list) -> dict:
-    if not Efix:
-        return {"count": 0, "mean_duration_ms": 0.0, "total_duration_ms": 0.0}
-    durations = [f[2] for f in Efix]
-    return {
-        "count":             len(durations),
-        "mean_duration_ms":  sum(durations) / len(durations),
-        "total_duration_ms": sum(durations),
-    }
-
-
 def run_fixations(cfg: dict, preloaded: dict | None = None) -> dict:
     """Detect fixations for all subjects and trials.
 
@@ -54,7 +43,7 @@ def run_fixations(cfg: dict, preloaded: dict | None = None) -> dict:
                    If None, loads from data/intermediate via load_all_subjects.
 
     Returns:
-        {subject_id: {trial_id: {"fixations": DataFrame, "summary": dict}}}
+        {subject_id: {trial_id: {"fixations": DataFrame}}}
     """
     if preloaded is None:
         preloaded = load_all_subjects(cfg)
@@ -95,7 +84,7 @@ def run_fixations(cfg: dict, preloaded: dict | None = None) -> dict:
             )
             
             fix_df = pd.DataFrame(Efix or [], columns=FIXATION_COLUMNS)
-            results[sid][trial_id] = {"fixations": fix_df, "summary": fixation_summary(Efix)}
+            results[sid][trial_id] = {"fixations": fix_df}
 
     return results
 
@@ -113,7 +102,7 @@ def run_saccades(cfg: dict, preloaded: dict | None = None) -> dict:
                    If None, loads from data/intermediate via load_all_subjects.
 
     Returns:
-        {subject_id: {trial_id: {"saccades": DataFrame, "summary": dict}}}
+        {subject_id: {trial_id: {"saccades": DataFrame}}}
     """
     if preloaded is None:
         preloaded = load_all_subjects(cfg)
@@ -155,31 +144,19 @@ def run_saccades(cfg: dict, preloaded: dict | None = None) -> dict:
                 maxacc=maxacc,
             )
 
-            rows = []
-            for sac_id, sac in enumerate(end_saccades or [], start=1):
-                start_t, end_t, duration, xs, ys, xe, ye = sac
-                rows.append({
-                    "saccade_id":  sac_id,
-                    "start_ms":    float(start_t),
-                    "end_ms":      float(end_t),
-                    "duration_ms": float(duration),
-                    "x_start":     float(xs),
-                    "y_start":     float(ys),
-                    "x_end":       float(xe),
-                    "y_end":       float(ye),
-                    "amplitude":   float(((xe - xs) ** 2 + (ye - ys) ** 2) ** 0.5),
-                })
+            raw_cols = ["start_ms", "end_ms", "duration_ms", "x_start", "y_start", "x_end", "y_end"]
+            sac_df = pd.DataFrame(end_saccades or [], columns=raw_cols)
 
-            sac_df = pd.DataFrame(rows, columns=SACCADE_COLUMNS)
-            results[sid][trial_id] = {
-                "saccades": sac_df,
-                "summary": {
-                    "n_saccades":        len(sac_df),
-                    "total_duration_ms": float(sac_df["duration_ms"].sum()) if not sac_df.empty else 0.0,
-                    "mean_duration_ms":  float(sac_df["duration_ms"].mean()) if not sac_df.empty else 0.0,
-                    "mean_amplitude_px": float(sac_df["amplitude"].mean()) if not sac_df.empty else 0.0,
-                },
-            }
+            if not sac_df.empty:
+                sac_df.insert(0, "saccade_id", sac_df.index + 1)
+                sac_df["amplitude"] = np.hypot(
+                    sac_df["x_end"] - sac_df["x_start"], 
+                    sac_df["y_end"] - sac_df["y_start"]
+                )
+            else:
+                sac_df = pd.DataFrame(columns=SACCADE_COLUMNS)
+
+            results[sid][trial_id] = {"saccades": sac_df}
 
     return results
 

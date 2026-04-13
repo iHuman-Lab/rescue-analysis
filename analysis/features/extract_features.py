@@ -1,68 +1,94 @@
 import pandas as pd
-from pathlib import Path
 
 
 from analysis.features.conventions import (
     DEFAULT_PUPIL_COL,
     best_suffix,
     detect_category,
-    output_file,
     subject_label,
 )
-from analysis.features.eyetracking_features import run_eyetracking_features
 
 
 # ---------------------------------------------------------------------------
 # Feature extractors (operate on in-memory DataFrames)
 # ---------------------------------------------------------------------------
 
-def extract_fixation_features(fix_df: pd.DataFrame, fix_aoi_df: pd.DataFrame) -> dict:
+def extract_fixation_features(fix_df: pd.DataFrame, fix_aoi_df: pd.DataFrame, aois: list[dict]) -> dict:
     features = {
         "n_fixations":           len(fix_df),
-        "mean_fixation_dur_ms":  fix_df["duration_ms"].mean() if not fix_df.empty else 0.0,
-        "total_fixation_dur_ms": fix_df["duration_ms"].sum()  if not fix_df.empty else 0.0,
     }
+    if not fix_df.empty:
+        features["mean_fixation_dur_ms"]  = float(fix_df["duration_ms"].mean())
+        features["total_fixation_dur_ms"] = float(fix_df["duration_ms"].sum())
+    else:
+        features["mean_fixation_dur_ms"]  = 0.0
+        features["total_fixation_dur_ms"] = 0.0
+
+    labels = [a["name"] for a in aois]
+    for aoi in labels:
+        features[f"{aoi}_pct_dur"] = 0.0
+        features[f"n_fixations_{aoi}"] = 0
+
     if not fix_aoi_df.empty and "aoi" in fix_aoi_df.columns:
         aoi_dur = fix_aoi_df.groupby("aoi")["duration_ms"].sum()
-        total   = aoi_dur.sum()
-        for aoi, dur in aoi_dur.items():
-            features[f"{aoi}_pct_dur"]      = dur / total if total > 0 else 0.0
-            features[f"n_fixations_{aoi}"]  = int((fix_aoi_df["aoi"] == aoi).sum())
+        aoi_counts = fix_aoi_df["aoi"].value_counts()
+        total   = float(aoi_dur.sum())
+        if total > 0:
+            for aoi in labels:
+                features[f"{aoi}_pct_dur"]     = float(aoi_dur.get(aoi, 0.0) / total)
+                features[f"n_fixations_{aoi}"] = int(aoi_counts.get(aoi, 0))
     return features
 
 
 def extract_saccade_features(sac_df: pd.DataFrame) -> dict:
     if sac_df.empty:
-        return {}
+        return {
+            "n_saccades": 0,
+            "mean_saccade_dur_ms": 0.0,
+            "mean_saccade_amp_px": 0.0,
+            "saccades_total_duration_ms": 0.0,
+        }
     return {
         "n_saccades":                 len(sac_df),
-        "mean_saccade_dur_ms":        sac_df["duration_ms"].mean(),
-        "mean_saccade_amp_px":        sac_df["amplitude"].mean(),
-        "saccades_total_duration_ms": sac_df["duration_ms"].sum(),
+        "mean_saccade_dur_ms":        float(sac_df["duration_ms"].mean()),
+        "mean_saccade_amp_px":        float(sac_df["amplitude"].mean()),
+        "saccades_total_duration_ms": float(sac_df["duration_ms"].sum()),
     }
 
 
-def extract_transition_features(trans_df: pd.DataFrame) -> dict:
-    features = {}
-    for src in trans_df.index:
-        for dst in trans_df.columns:
-            features[f"transitions_{src}_{dst}"] = trans_df.loc[src, dst]
+def extract_transition_features(trans_df: pd.DataFrame, aois: list[dict]) -> dict:
+    labels = [a["name"] for a in aois]
+    features = {f"transitions_{src}_{dst}": 0 for src in labels for dst in labels}
+    
+    if not trans_df.empty:
+        for src in trans_df.index:
+            for dst in trans_df.columns:
+                key = f"transitions_{src}_{dst}"
+                if key in features:
+                    features[key] = int(trans_df.loc[src, dst])
     return features
 
 
 def extract_pupil_features(eye_df: pd.DataFrame, eye_cfg: dict) -> dict:
+    if eye_df.empty:
+        return {"std_pupil_diam": 0.0}
     pupil_col = eye_cfg.get("pupil_col", DEFAULT_PUPIL_COL)
     if pupil_col not in eye_df.columns:
-        return {}
+        return {"std_pupil_diam": 0.0}
     series = pd.to_numeric(eye_df[pupil_col], errors="coerce")
     missing_val = eye_cfg.get("missing", 0.0)
     series = series.replace(missing_val, pd.NA).dropna()
     if series.empty:
-        return {}
+        return {"std_pupil_diam": 0.0}
     return {"std_pupil_diam": float(series.std())}
 
 
 def extract_game_features(game_df: pd.DataFrame) -> dict:
+    if game_df.empty:
+        return {
+            "n_actions": 0, "n_llm_calls": 0, "saved_victims": 0,
+            "mean_reward": 0.0, "total_reward": 0.0, "cumulative_reward": 0.0, "victims_per_step": 0.0
+        }
     reward = pd.to_numeric(game_df["reward"], errors="coerce") if "reward" in game_df.columns else pd.Series(dtype=float)
     cumulative_reward = float(reward.sum()) if not reward.empty else 0.0
     features = {
@@ -106,6 +132,7 @@ def run_extract_features(cfg: dict, preloaded: dict, eyetracking: dict) -> pd.Da
 
     rows = []
     suffix = best_suffix(cfg)
+    aois = cfg.get("aoi", [])
     for sid in subjects:
         trials = preloaded.get(sid, {})
         for trial_id, streams in trials.items():
@@ -131,15 +158,11 @@ def run_extract_features(cfg: dict, preloaded: dict, eyetracking: dict) -> pd.Da
                 "category":    category,
                 "expertise":   expertise.get(sid, "unknown"),
             }
-            if not game_df.empty:
-                row.update(extract_game_features(game_df))
-            if not eye_df.empty:
-                row.update(extract_pupil_features(eye_df, eye_cfg))
-            row.update(extract_fixation_features(fix_df, fix_aoi_df))
-            if not sac_df.empty:
-                row.update(extract_saccade_features(sac_df))
-            if not trans_df.empty:
-                row.update(extract_transition_features(trans_df))
+            row.update(extract_game_features(game_df))
+            row.update(extract_pupil_features(eye_df, eye_cfg))
+            row.update(extract_fixation_features(fix_df, fix_aoi_df, aois))
+            row.update(extract_saccade_features(sac_df))
+            row.update(extract_transition_features(trans_df, aois))
 
             rows.append(row)
             print(f"  {sid}  {trial_id:35s}  victims={row.get('saved_victims', '?')}  "
