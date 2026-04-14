@@ -106,7 +106,7 @@ saccade:
   minlen:  10
   maxvel:  1000   #pixel/s (alsmost 2200 deg/s at 72cm viewing distance) https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
   maxacc:  1500   # acceleration threshold in pixels/s²   https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
-  maxdur:  150   # max saccade duration in ms (post-detection filter)
+ # maxdur:  150   # max saccade duration in ms (post-detection filter)
 
 
 aoi:
