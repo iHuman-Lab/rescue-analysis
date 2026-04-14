@@ -39,34 +39,22 @@ def prepare_df(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     return df[keep]
 
 
-def run_glmm(df: pd.DataFrame, features: list[str]):
-    """Fit one mixed LM using all features together."""
-    available = [feature for feature in features if feature in df.columns]
-    if not available:
+def run_glmm(df: pd.DataFrame, outcome: str):
+    """Fit one mixed LM for one outcome."""
+    if outcome not in df.columns:
         return None
 
-    clean = (
-        df.melt(
-            id_vars=["participant", "category", "condition", "expertise"],
-            value_vars=available,
-            var_name="feature",
-            value_name="value",
-        )
-        .dropna(subset=["value"])
-        .copy()
-    )
+    clean = df.dropna(subset=[outcome]).copy()
     if clean.empty:
         return None
 
     formula = (
-        "value ~ C(feature)"
-        " + C(condition, Treatment('no_llm'))"
+        f"{outcome} ~ C(condition, Treatment('no_llm'))"
         " * C(expertise, Treatment('novice'))"
     )
     try:
         model = smf.mixedlm(formula, clean, groups=clean["participant"]).fit()
     except np.linalg.LinAlgError:
-        print("Skipping pooled model: singular matrix.")
         return None
     return model
 
@@ -75,27 +63,28 @@ def run_all(
     cfg: dict,
     dataframes: dict,
 ) -> pd.DataFrame:
-    """Run one pooled GLMM per dataset using all configured features together."""
+    """Run one GLMM per feature for each dataset."""
     features = cfg["glmm2"]["continuous"] + cfg["glmm2"]["count"]
     rows = []
 
     for name, df in dataframes.items():
         prepared = prepare_df(df, cfg)
-        model = run_glmm(prepared, features)
-        if model is None:
-            continue
+        for outcome in features:
+            model = run_glmm(prepared, outcome)
+            if model is None:
+                continue
 
-        for term in model.params.index:
-            rows.append(
-                {
-                    "dataset": name,
-                    "outcome": "all_features",
-                    "term": term,
-                    "coef": model.params[term],
-                    "se": model.bse.get(term),
-                    "p_value": model.pvalues.get(term),
-                }
-            )
+            for term in model.params.index:
+                rows.append(
+                    {
+                        "dataset": name,
+                        "outcome": outcome,
+                        "term": term,
+                        "coef": model.params[term],
+                        "se": model.bse.get(term),
+                        "p_value": model.pvalues.get(term),
+                    }
+                )
 
     results = pd.DataFrame(rows)
     if not results.empty:
