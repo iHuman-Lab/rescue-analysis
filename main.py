@@ -9,6 +9,7 @@ from analysis.features.io import (
 	save_aoi_results,
 	save_aggregated_transitions,
 	save_best_features,
+	save_glmm_results,
 )
 from analysis.glmmsecond import run_all as run_glmmsecond
 from analysis.utils import skip_run
@@ -48,4 +49,7 @@ with skip_run("run", "extract_features") as check, check():
 
 
 with skip_run("run", "glmmsecond") as check, check():
-	run_glmmsecond(cfg, processed_dir, dataframes={"best_features": best_features}, root=ROOT)
+	glmm_results = run_glmmsecond(cfg, dataframes={"best_features": best_features})
+	if glmm_results is not None and not glmm_results.empty:
+		out = save_glmm_results(glmm_results, processed_dir, cfg)
+		print(f"\nglmmsecond -> {out}")

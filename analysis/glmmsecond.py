@@ -1,13 +1,9 @@
-import warnings
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
-from statsmodels.tools.sm_exceptions import ConvergenceWarning
-
-from analysis.features.io import save_glmm_results
 from analysis.features.conventions import condition_for_category
 
 
@@ -43,64 +39,63 @@ def prepare_df(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     return df[keep]
 
 
-def run_glmm(df: pd.DataFrame, outcome: str):
-    """Fit a mixed LM for one outcome: condition * expertise, random intercept per participant."""
-    clean = df.dropna(subset=[outcome]).copy()
+def run_glmm(df: pd.DataFrame, features: list[str]):
+    """Fit one mixed LM using all features together."""
+    available = [feature for feature in features if feature in df.columns]
+    if not available:
+        return None
+
+    clean = (
+        df.melt(
+            id_vars=["participant", "category", "condition", "expertise"],
+            value_vars=available,
+            var_name="feature",
+            value_name="value",
+        )
+        .dropna(subset=["value"])
+        .copy()
+    )
     if clean.empty:
         return None
+
     formula = (
-        f"{outcome} ~ C(condition, Treatment('no_llm'))"
+        "value ~ C(feature)"
+        " + C(condition, Treatment('no_llm'))"
         " * C(expertise, Treatment('novice'))"
     )
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", ConvergenceWarning)
-        warnings.simplefilter("ignore", RuntimeWarning)
-        try:
-            model = smf.mixedlm(formula, clean, groups=clean["participant"]).fit()
-        except np.linalg.LinAlgError:
-            warnings.warn(f"Skipping '{outcome}': singular matrix.", RuntimeWarning)
-            return None
+    try:
+        model = smf.mixedlm(formula, clean, groups=clean["participant"]).fit()
+    except np.linalg.LinAlgError:
+        print("Skipping pooled model: singular matrix.")
+        return None
     return model
 
 
 def run_all(
-    cfg: dict, processed_dir: Path, dataframes: dict, root: Path | None = None, verbose: bool = True
+    cfg: dict,
+    dataframes: dict,
 ) -> pd.DataFrame:
-    """Run GLMM on all datasets.
-
-    Args:
-        cfg:        Full config dict.
-        processed_dir: Path to the processed data directory.
-        dataframes: {name: DataFrame} from run_extract_features().
-        root:       Project root path, for printing relative output paths.
-        verbose:    Print progress.
-    """
+    """Run one pooled GLMM per dataset using all configured features together."""
     features = cfg["glmm2"]["continuous"] + cfg["glmm2"]["count"]
     rows = []
+
     for name, df in dataframes.items():
         prepared = prepare_df(df, cfg)
-        if verbose:
-            print(f"\n=== {name} ===")
-            print(prepared[["condition", "expertise"]].value_counts().to_string())
-        for outcome in features:
-            if outcome not in prepared.columns:
-                continue
-            model = run_glmm(prepared, outcome)
-            if model is None:
-                continue
-            for term in model.params.index:
-                rows.append(
-                    {
-                        "dataset": name,
-                        "outcome": outcome,
-                        "term": term,
-                        "coef": model.params[term],
-                        "se": model.bse.get(term),
-                        "p_value": model.pvalues.get(term),
-                    }
-                )
-            if verbose:
-                print(f"  {outcome}: fitted")
+        model = run_glmm(prepared, features)
+        if model is None:
+            continue
+
+        for term in model.params.index:
+            rows.append(
+                {
+                    "dataset": name,
+                    "outcome": "all_features",
+                    "term": term,
+                    "coef": model.params[term],
+                    "se": model.bse.get(term),
+                    "p_value": model.pvalues.get(term),
+                }
+            )
 
     results = pd.DataFrame(rows)
     if not results.empty:
@@ -108,9 +103,5 @@ def run_all(
         _, fdr, _, _ = multipletests(results.loc[valid, "p_value"], method="fdr_bh")
         results["p_value_fdr"] = np.nan
         results.loc[valid, "p_value_fdr"] = fdr
-        out = save_glmm_results(results, processed_dir, cfg)
-        if verbose:
-            path_to_print = out.relative_to(root) if root else out
-            print(f"\nResults saved -> {path_to_print}")
-            print(results.to_string(index=False))
+
     return results
