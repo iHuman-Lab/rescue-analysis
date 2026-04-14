@@ -64,17 +64,17 @@ def run_glmm(df: pd.DataFrame, outcome: str):
 
 
 def run_all(
-    cfg: dict, root: Path, dataframes: dict, verbose: bool = True
+    cfg: dict, processed_dir: Path, dataframes: dict, root: Path | None = None, verbose: bool = True
 ) -> pd.DataFrame:
     """Run GLMM on all datasets.
 
     Args:
         cfg:        Full config dict.
-        root:       Project root path (from main.py).
+        processed_dir: Path to the processed data directory.
         dataframes: {name: DataFrame} from run_extract_features().
+        root:       Project root path, for printing relative output paths.
         verbose:    Print progress.
     """
-    processed_dir = root / cfg["paths"]["processed"]
     features = cfg["glmm2"]["continuous"] + cfg["glmm2"]["count"]
     rows = []
     for name, df in dataframes.items():
@@ -110,6 +110,7 @@ def run_all(
         results.loc[valid, "p_value_fdr"] = fdr
         out = save_glmm_results(results, processed_dir, cfg)
         if verbose:
-            print(f"\nResults saved -> {out.relative_to(root)}")
+            path_to_print = out.relative_to(root) if root else out
+            print(f"\nResults saved -> {path_to_print}")
             print(results.to_string(index=False))
     return results

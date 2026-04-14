@@ -48,4 +48,4 @@ with skip_run("run", "extract_features") as check, check():
 
 
 with skip_run("run", "glmmsecond") as check, check():
-	run_glmmsecond(cfg, ROOT, dataframes={"best_features": best_features})
+	run_glmmsecond(cfg, processed_dir, dataframes={"best_features": best_features}, root=ROOT)
