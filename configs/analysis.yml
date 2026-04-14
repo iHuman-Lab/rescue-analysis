@@ -1,29 +1,29 @@
 sub:
   - P001
   - P002
-  - P003
-  - P004
-  - P005
-  - P006
-  - P007
-  - P008
-  - P009
-  - P010
+  # #- P003
+  # - P004
+  # - P005
+  # - P006
+  # - P007
+  # - P008
+  # - P009
+  # # - P010
 
 
 # Participant expertise: expert or novice
 # Add each subject ID here; subjects not listed default to 'unknown'
 expertise:
   P001: expert
-  P002: expert
-  P003: novice
-  P004: novice
-  P005: expert
-  P006: novice
-  P007: novice
-  P008: expert
-  P009: novice
-  P010: expert
+  P002: novice
+  # P003: novice
+  # P004: novice
+  # P005: expert
+  # P006: novice
+  # P007: novice
+  # P008: expert
+  # P009: novice
+  # P010: expert
 
 
 paths:
@@ -74,7 +74,7 @@ glmm2:
   verbose: true
   output_file: glmm2_results.csv
   group_col: participant
-  continuous: [victims_per_step, total_reward, mean_fixation_dur_ms, std_pupil_diam,
+  continuous: [victims_per_step, total_reward, cumulative_reward, mean_fixation_dur_ms, std_pupil_diam,
                game_area_pct_dur, chat_panel_pct_dur, offscreen_pct_dur]
   count:      [n_fixations, n_saccades, saved_victims]
 
