@@ -104,9 +104,8 @@ fixation:
 
 saccade:
   minlen:  10
-  maxvel:  100   #pixel/s (alsmost 22 deg/s at 72cm viewing distance) https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
-  maxacc:  1500   # acceleration threshold in pixels/s²   https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
- # maxdur:  150   # max saccade duration in ms (post-detection filter)
+  maxvel:  80   #pixel/s (alsmost 22 deg/s at 72cm viewing distance) https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
+  maxacc:  1500   # acceleration threshold in pixels/s²   As sampling is 58HZ, https://iopscience.iop.org/article/10.1088/1361-6579/ab159d/ampdf
 
 
 aoi:
