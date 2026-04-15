@@ -12,7 +12,6 @@ from analysis.features.io import (
 	save_glmm_results,
 )
 from analysis.glmmsecond import run_all as run_glmmsecond
-from analysis.multivariate_mixed import run_all as run_multivariate_mixed
 from analysis.utils import skip_run
 
 ROOT   = Path(__file__).resolve().parent
@@ -24,14 +23,14 @@ def main() -> None:
 	processed_dir = ROOT / cfg["paths"]["processed"]
 
 	preloaded = {}
-	with skip_run("skip", "xdf") as check, check():
+	with skip_run("run", "xdf") as check, check():
 		preloaded = collect_subjects(cfg)
 
 	if not preloaded:
 		preloaded = load_all_subjects(cfg)
 
 	eyetracking = {}
-	with skip_run("skip", "eyetracking") as check, check():
+	with skip_run("run", "eyetracking") as check, check():
 		eyetracking = run_eyetracking_features(cfg, preloaded=preloaded, root=ROOT)
 		if "aoi" in eyetracking:
 			save_aoi_results(eyetracking["aoi"], processed_dir, cfg)
@@ -45,18 +44,11 @@ def main() -> None:
 			out = save_best_features(best_features, processed_dir, cfg)
 			print(f"\nbest_features -> {out}")
 
-	with skip_run("skip", "glmmsecond") as check, check():
+	with skip_run("run", "glmmsecond") as check, check():
 		glmm_results = run_glmmsecond(cfg, dataframes={"best_features": best_features})
 		if glmm_results is not None and not glmm_results.empty:
 			out = save_glmm_results(glmm_results, processed_dir, cfg)
 			print(f"\nglmmsecond -> {out}")
-
-	with skip_run("skip", "glmmsecond_multivariate") as check, check():
-		mv_results = run_multivariate_mixed(cfg, dataframes={"best_features": best_features})
-		if mv_results is not None and not mv_results.empty:
-			out = processed_dir / cfg["glmm2"]["multivariate"]["output_file"]
-			mv_results.to_csv(out, index=False)
-			print(f"\nglmmsecond_multivariate -> {out}")
 
 
 if __name__ == "__main__":

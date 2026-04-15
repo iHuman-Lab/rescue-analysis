@@ -112,8 +112,8 @@ def fit_multivariate_mixed_model(
 
 
 def run_all(cfg: dict, dataframes: dict) -> pd.DataFrame:
-    """Run one multivariate mixed model per dataset for continuous features."""
-    outcomes = cfg["glmm2"]["continuous"]
+    """Run one multivariate mixed model per dataset."""
+    outcomes = cfg["glmm2"]["continuous"] + cfg["glmm2"]["count"]
     rows = []
 
     for name, df in dataframes.items():
