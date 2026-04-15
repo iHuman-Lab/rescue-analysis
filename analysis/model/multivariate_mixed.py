@@ -79,9 +79,13 @@ def fit_multivariate_mixed_model(
         alpha = pm.Normal("alpha", mu=0, sigma=2, shape=n_outcomes)
         beta_condition = pm.Normal("beta_condition", mu=0, sigma=2, shape=n_outcomes)
         beta_expertise = pm.Normal("beta_expertise", mu=0, sigma=2, shape=n_outcomes)
-        beta_interaction = pm.Normal("beta_interaction", mu=0, sigma=2, shape=n_outcomes)
+        beta_interaction = pm.Normal(
+            "beta_interaction", mu=0, sigma=2, shape=n_outcomes
+        )
 
-        sigma_participant = pm.HalfNormal("sigma_participant", sigma=1, shape=n_outcomes)
+        sigma_participant = pm.HalfNormal(
+            "sigma_participant", sigma=1, shape=n_outcomes
+        )
         participant_offset = pm.Normal(
             "participant_offset",
             mu=0,
@@ -129,7 +133,9 @@ def run_all(cfg: dict, dataframes: dict) -> pd.DataFrame:
         if idata is None:
             continue
 
-        summary = _fixed_effect_rows(idata, [o for o in outcomes if o in prepared.columns])
+        summary = _fixed_effect_rows(
+            idata, [o for o in outcomes if o in prepared.columns]
+        )
         if summary.empty:
             continue
 
@@ -138,7 +144,15 @@ def run_all(cfg: dict, dataframes: dict) -> pd.DataFrame:
 
     if not rows:
         return pd.DataFrame(
-            columns=["dataset", "outcome", "term", "mean", "sd", "hdi_2.5%", "hdi_97.5%"]
+            columns=[
+                "dataset",
+                "outcome",
+                "term",
+                "mean",
+                "sd",
+                "hdi_2.5%",
+                "hdi_97.5%",
+            ]
         )
 
     return pd.concat(rows, ignore_index=True)

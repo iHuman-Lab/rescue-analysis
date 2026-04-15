@@ -7,10 +7,6 @@ from analysis.prepare_data.xdf import load_all_subjects
 
 "The reason we used this: https://link.springer.com/article/10.3758/s13428-013-0422-2"
 
-# ---------------------------------------------------------------------------
-# Shared eye preprocessingF
-# ---------------------------------------------------------------------------
-
 
 def _preprocess_eye(eye_df: pd.DataFrame, eye_cfg: dict) -> pd.DataFrame:
     x_col = eye_cfg["x_col"]
@@ -27,12 +23,7 @@ def _preprocess_eye(eye_df: pd.DataFrame, eye_cfg: dict) -> pd.DataFrame:
     return eye_df
 
 
-# ---------------------------------------------------------------------------
-# Fixations
-# ---------------------------------------------------------------------------
-
-
-def run_fixations(cfg: dict, preloaded: dict | None = None) -> dict:
+def detect_fixations(cfg: dict, preloaded: dict | None = None) -> dict:
     """Detect fixations for all subjects and trials.
 
     Args:
@@ -87,12 +78,7 @@ def run_fixations(cfg: dict, preloaded: dict | None = None) -> dict:
     return results
 
 
-# ---------------------------------------------------------------------------
-# Saccades
-# ---------------------------------------------------------------------------
-
-
-def run_saccades(cfg: dict, preloaded: dict | None = None) -> dict:
+def detect_saccades(cfg: dict, preloaded: dict | None = None) -> dict:
     """Detect saccades for all subjects and trials.
 
     Args:
@@ -168,18 +154,14 @@ def run_saccades(cfg: dict, preloaded: dict | None = None) -> dict:
     return results
 
 
-# ---------------------------------------------------------------------------
-# Combined entry point
-# ---------------------------------------------------------------------------
-
-
-def run_eyetracking(cfg: dict, preloaded: dict | None = None) -> dict:
+def extract_eyetracking_features(eye_data, cfg: dict) -> dict:
     """Run both fixation and saccade detection.
 
     Returns:
         {"fixations": {...}, "saccades": {...}}
     """
     return {
-        "fixations": run_fixations(cfg, preloaded=preloaded),
-        "saccades": run_saccades(cfg, preloaded=preloaded),
+        "fixations": detect_fixations(eye_data, cfg),
+        "saccades": detect_saccades(eye_data, cfg),
+        "aoi": aoi_features(eye_data, cfg),
     }

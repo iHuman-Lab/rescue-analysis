@@ -1,6 +1,5 @@
 import re
 
-
 DEFAULT_BEST_SUFFIX = "_best"
 DEFAULT_CATEGORY_NAMES = ("gemini", "openai", "dummy")
 DEFAULT_OFFSCREEN_LABEL = "offscreen"
@@ -34,11 +33,11 @@ SACCADE_COLUMNS = [
 
 def best_suffix(cfg: dict) -> str:
     template = (
-        cfg.get("xdf", {})
-        .get("output", {})
-        .get("best_dir_template", "{base}_best")
+        cfg.get("xdf", {}).get("output", {}).get("best_dir_template", "{base}_best")
     )
-    return template.replace("{base}", "") if "{base}" in template else DEFAULT_BEST_SUFFIX
+    return (
+        template.replace("{base}", "") if "{base}" in template else DEFAULT_BEST_SUFFIX
+    )
 
 
 def category_names(cfg: dict) -> list[str]:
@@ -60,7 +59,9 @@ def output_file(cfg: dict, key: str) -> str:
 
 def detect_category(trial_id: str, cfg: dict) -> str:
     suffix = best_suffix(cfg)
-    base_name = trial_id[: -len(suffix)] if suffix and trial_id.endswith(suffix) else trial_id
+    base_name = (
+        trial_id[: -len(suffix)] if suffix and trial_id.endswith(suffix) else trial_id
+    )
     return next((name for name in category_names(cfg) if name in base_name), "unknown")
 
 
@@ -74,11 +75,7 @@ def subject_label(subject_id: str, cfg: dict) -> str:
 
 
 def run_suffix_pattern(cfg: dict) -> str:
-    return (
-        cfg.get("xdf", {})
-        .get("output", {})
-        .get("run_suffix_pattern", r"_run\d+$")
-    )
+    return cfg.get("xdf", {}).get("output", {}).get("run_suffix_pattern", r"_run\d+$")
 
 
 def strip_run_suffix(name: str, cfg: dict) -> str:
