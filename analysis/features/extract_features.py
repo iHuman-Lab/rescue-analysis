@@ -1,6 +1,6 @@
 import pandas as pd
 
-from .AOI_fixation import aoi_fixation_stats, aoi_transition_matrix, label_fixations
+from .AOI_fixation import aoi_fixation_stats, run_aoi
 from .eyetracking_data import run_eyetracking
 from .game_features import extract_game_features
 
@@ -30,8 +30,9 @@ def extract_features(data: dict, cfg: dict) -> pd.DataFrame:
                 et = run_eyetracking(eye_data, cfg)
                 fix_df = et["fixations"]
                 sac_df = et["saccades"]
-                fix_aoi = label_fixations(fix_df, aois)
-                trans = aoi_transition_matrix(fix_aoi, aois)
+                aoi = run_aoi(fix_df, aois)
+                fix_aoi = aoi["fix_aoi"]
+                trans = aoi["transitions"]
                 aoi_labels = [a["name"] for a in aois] + [offscreen_label]
 
                 aoi_dur, aoi_counts = aoi_fixation_stats(fix_aoi)

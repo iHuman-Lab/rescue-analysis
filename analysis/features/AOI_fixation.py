@@ -25,6 +25,19 @@ def aoi_fixation_stats(fix_aoi_df: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
     return dur, counts
 
 
+def run_aoi(fix_df: pd.DataFrame, aois: list[dict]) -> dict:
+    """Label fixations with AOIs and compute transition matrix.
+
+    Returns:
+        {"fix_aoi": DataFrame, "transitions": DataFrame}
+    """
+    fix_aoi = label_fixations(fix_df, aois)
+    return {
+        "fix_aoi": fix_aoi,
+        "transitions": aoi_transition_matrix(fix_aoi, aois),
+    }
+
+
 def aoi_transition_matrix(fix_aoi_df: pd.DataFrame, aois: list[dict]) -> pd.DataFrame:
     """Calculate transition counts between sequential AOI fixations."""
     labels = [a["name"] for a in aois]
