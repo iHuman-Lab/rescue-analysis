@@ -15,6 +15,16 @@ def label_fixations(fix_df: pd.DataFrame, aois: list[dict]) -> pd.DataFrame:
     return df
 
 
+def aoi_fixation_stats(fix_aoi_df: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+    """Return dwell time (ms) and fixation counts per AOI label."""
+    if fix_aoi_df.empty:
+        empty = pd.Series(dtype=float)
+        return empty, empty
+    dur = fix_aoi_df.groupby("aoi")["duration_ms"].sum()
+    counts = fix_aoi_df["aoi"].value_counts()
+    return dur, counts
+
+
 def aoi_transition_matrix(fix_aoi_df: pd.DataFrame, aois: list[dict]) -> pd.DataFrame:
     """Calculate transition counts between sequential AOI fixations."""
     labels = [a["name"] for a in aois]

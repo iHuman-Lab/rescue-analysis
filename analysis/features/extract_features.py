@@ -1,6 +1,6 @@
 import pandas as pd
 
-from .AOI_fixation import aoi_transition_matrix, label_fixations
+from .AOI_fixation import aoi_fixation_stats, aoi_transition_matrix, label_fixations
 from .eyetracking_data import run_eyetracking
 from .game_features import extract_game_features
 
@@ -34,8 +34,7 @@ def extract_features(data: dict, cfg: dict) -> pd.DataFrame:
                 trans = aoi_transition_matrix(fix_aoi, aois)
                 aoi_labels = [a["name"] for a in aois] + [offscreen_label]
 
-                aoi_dur = fix_aoi.groupby("aoi")["duration_ms"].sum() if not fix_aoi.empty else pd.Series(dtype=float)
-                aoi_counts = fix_aoi["aoi"].value_counts() if not fix_aoi.empty else pd.Series(dtype=int)
+                aoi_dur, aoi_counts = aoi_fixation_stats(fix_aoi)
                 total_dur = float(aoi_dur.sum())
 
                 pupil_col = eye_cfg.get("pupil_col")

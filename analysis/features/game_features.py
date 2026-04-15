@@ -14,8 +14,7 @@ def extract_game_features(game_data) -> dict:
             nonzero = step_rewards[step_rewards.ne(0)].dropna()
             if not nonzero.empty:
                 return float(nonzero.iloc[-1])
-            last = step_rewards.dropna()
-            return float(last.iloc[-1]) if not last.empty else 0.0
+            return float(step_rewards.dropna().iloc[-1])
 
         deduped_reward = reward_df.groupby("step_count", sort=False)["reward"].apply(
             one_reward_per_step
