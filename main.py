@@ -3,15 +3,7 @@ from pathlib import Path
 import yaml
 from analysis.utils import skip_run
 
-from analysis.features.AOI_fixation import aggregate_transitions
 from analysis.features.extract_features import extract_features
-from analysis.features.eye_features import detect_fixations, detect_saccades
-from analysis.features.io import (
-    save_aggregated_transitions,
-    save_aoi_results,
-    save_best_features,
-    save_glmm_results,
-)
 from analysis.model.glmmsecond import run_all as run_glmmsecond
 from analysis.prepare_data.data import split_by_trail
 
@@ -44,8 +36,12 @@ with skip_run("run", "extract_features") as check, check():
 #         out = save_best_features(best_features, processed_dir, cfg)
 #         print(f"\nbest_features -> {out}")
 
-with skip_run("skip", "glmmsecond") as check, check():
+with skip_run("run", "glmmsecond") as check, check():
     glmm_results = run_glmmsecond(cfg, dataframes={"best_features": df})
     if glmm_results is not None and not glmm_results.empty:
-        out = save_glmm_results(glmm_results, processed_dir, cfg)
+        processed_dir = Path(cfg["paths"]["processed"])
+        filename = cfg.get("glmm2", {}).get("output_file", "glmm2_results.csv")
+        out = processed_dir / filename
+        out.parent.mkdir(parents=True, exist_ok=True)
+        glmm_results.to_csv(out, index=False)
         print(f"\nglmmsecond -> {out}")
