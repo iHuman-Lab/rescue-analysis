@@ -18,6 +18,11 @@ with skip_run("run", "split_data") as check, check():
 
 with skip_run("run", "extract_features") as check, check():
     df = extract_features(preloaded, cfg)
+    processed_dir = Path(cfg["paths"]["processed"])
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    out = processed_dir / "features_all_subjects.csv"
+    df.to_csv(out, index=False)
+    print(f"\nfeatures -> {out}")
 
 # # eyetracking = {}
 # with skip_run("skip", "eyetracking") as check, check():
