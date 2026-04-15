@@ -2,7 +2,7 @@ import arviz as az
 import pandas as pd
 import pymc as pm
 
-from analysis.glmmsecond import prepare_df as prepare_univariate_df
+from analysis.model.glmmsecond import prepare_df as prepare_univariate_df
 
 
 def _fixed_effect_rows(idata: az.InferenceData, outcomes: list[str]) -> pd.DataFrame:

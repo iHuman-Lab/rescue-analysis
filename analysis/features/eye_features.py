@@ -100,57 +100,38 @@ def detect_saccades(cfg: dict, preloaded: dict | None = None) -> dict:
     maxvel = sac_cfg["maxvel"]
     maxacc = sac_cfg["maxacc"]
 
-    results: dict = {}
 
-    for sid in subjects:
-        data = preloaded.get(sid, {})
-        if not data:
-            print(f"[SKIP] {sid}: no trial data")
-            continue
+        eye_df = _preprocess_eye(eye_df, eye_cfg)
 
-        print(f"[SUB]  {sid}")
-        results[sid] = {}
+        _, end_saccades = saccade_detection(
+            eye_df[eye_cfg["x_col"]].to_numpy(dtype=float),
+            eye_df[eye_cfg["y_col"]].to_numpy(dtype=float),
+            eye_df[eye_cfg["time_col"]].to_numpy(dtype=float),
+            missing=missing,
+            minlen=minlen,
+            maxvel=maxvel,
+            maxacc=maxacc,
+        )
 
-        for trial_id, streams in data.items():
-            eye_df = streams["eyetracker"]
-            if eye_df.empty:
-                print(f"         {trial_id:35s}  empty eyetracker — skipping")
-                continue
+        raw_cols = [
+            "start_ms",
+            "end_ms",
+            "duration_ms",
+            "x_start",
+            "y_start",
+            "x_end",
+            "y_end",
+        ]
+        sac_df = pd.DataFrame(end_saccades or [], columns=raw_cols)
 
-            eye_df = _preprocess_eye(eye_df, eye_cfg)
-
-            _, end_saccades = saccade_detection(
-                eye_df[eye_cfg["x_col"]].to_numpy(dtype=float),
-                eye_df[eye_cfg["y_col"]].to_numpy(dtype=float),
-                eye_df[eye_cfg["time_col"]].to_numpy(dtype=float),
-                missing=missing,
-                minlen=minlen,
-                maxvel=maxvel,
-                maxacc=maxacc,
+        if not sac_df.empty:
+            sac_df.insert(0, "saccade_id", sac_df.index + 1)
+            sac_df["amplitude"] = np.hypot(
+                sac_df["x_end"] - sac_df["x_start"],
+                sac_df["y_end"] - sac_df["y_start"],
             )
-
-            raw_cols = [
-                "start_ms",
-                "end_ms",
-                "duration_ms",
-                "x_start",
-                "y_start",
-                "x_end",
-                "y_end",
-            ]
-            sac_df = pd.DataFrame(end_saccades or [], columns=raw_cols)
-
-            if not sac_df.empty:
-                sac_df.insert(0, "saccade_id", sac_df.index + 1)
-                sac_df["amplitude"] = np.hypot(
-                    sac_df["x_end"] - sac_df["x_start"],
-                    sac_df["y_end"] - sac_df["y_start"],
-                )
-            else:
-                sac_df = pd.DataFrame(columns=SACCADE_COLUMNS)
-
-            results[sid][trial_id] = {"saccades": sac_df}
-
+        else:
+            sac_df = pd.DataFrame(columns=SACCADE_COLUMNS)
     return results
 
 
