@@ -4,8 +4,8 @@ import yaml
 from analysis.utils import skip_run
 
 from analysis.features.AOI_fixation import aggregate_transitions
-from analysis.features.extract_features import extract_features, run_extract_features
-from analysis.features.eyetracking_features import run_eyetracking_features
+from analysis.features.extract_features import extract_features
+from analysis.features.eye_features import detect_fixations, detect_saccades
 from analysis.features.io import (
     save_aggregated_transitions,
     save_aoi_results,
@@ -25,7 +25,7 @@ with skip_run("run", "split_data") as check, check():
 
 
 with skip_run("run", "extract_features") as check, check():
-    df = extract_features(cfg)
+    df = extract_features(preloaded, cfg)
 
 # # eyetracking = {}
 # with skip_run("skip", "eyetracking") as check, check():
@@ -45,8 +45,7 @@ with skip_run("run", "extract_features") as check, check():
 #         print(f"\nbest_features -> {out}")
 
 with skip_run("skip", "glmmsecond") as check, check():
-    df = extract_features(cfg)
-    glmm_results = run_glmmsecond(cfg, dataframes={"best_features": best_features})
+    glmm_results = run_glmmsecond(cfg, dataframes={"best_features": df})
     if glmm_results is not None and not glmm_results.empty:
         out = save_glmm_results(glmm_results, processed_dir, cfg)
         print(f"\nglmmsecond -> {out}")

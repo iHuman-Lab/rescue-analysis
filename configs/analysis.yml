@@ -32,6 +32,7 @@ paths:
   processed: data/processed # output of fixations/saccades
 
 analysis:
+  offscreen_label: offscreen
   categories: [ gemini, openai, dummy ]
   condition_by_category:
     dummy: no_llm
@@ -85,6 +86,7 @@ eyetracker:
   x_col: avg_gaze_point_x # normalized 0-1 (no PsychoPy window set during recording)
   y_col: avg_gaze_point_y # normalized 0-1 (no PsychoPy window set during recording)
   time_col: timestamp
+  pupil_col: avg_pupil_diam
   screen_w: 1920 # screen width in pixels  (used to scale normalized -> pixels)
   screen_h: 1080 # screen height in pixels (used to scale normalized -> pixels)
   missing: 0.0 # value used for missing/invalid samples

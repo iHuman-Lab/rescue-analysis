@@ -1,3 +1,10 @@
+analysis:
+  offscreen_label: offscreen
+
+eyetracker:
+  pupil_col: pupil_diam
+  missing: 0.0
+
 game:
   display: 1 # Display/monitor index (0 = primary, 1 = secondary, etc.)
   fullscreen: True # Run the game and instruction windows in fullscreen

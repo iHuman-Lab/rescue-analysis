@@ -1,12 +1,7 @@
 import pandas as pd
 
-from analysis.features.conventions import (
-    DEFAULT_OFFSCREEN_LABEL,
-    DEFAULT_PUPIL_COL,
-    best_suffix,
-    detect_category,
-    subject_label,
-)
+from .eye_features import extract_eyetracking_features
+from .game_features import extract_game_features
 
 # ---------------------------------------------------------------------------
 # Feature extractors (operate on in-memory DataFrames)
@@ -14,7 +9,10 @@ from analysis.features.conventions import (
 
 
 def extract_fixation_features(
-    fix_df: pd.DataFrame, fix_aoi_df: pd.DataFrame, aois: list[dict]
+    fix_df: pd.DataFrame,
+    fix_aoi_df: pd.DataFrame,
+    aois: list[dict],
+    offscreen_label: str,
 ) -> dict:
     features = {
         "n_fixations": len(fix_df),
@@ -26,7 +24,7 @@ def extract_fixation_features(
         features["mean_fixation_dur_ms"] = 0.0
         features["total_fixation_dur_ms"] = 0.0
 
-    labels = [a["name"] for a in aois] + [DEFAULT_OFFSCREEN_LABEL]
+    labels = [a["name"] for a in aois] + [offscreen_label]
     for aoi in labels:
         features[f"{aoi}_pct_dur"] = 0.0
         features[f"n_fixations_{aoi}"] = 0
@@ -74,8 +72,8 @@ def extract_transition_features(trans_df: pd.DataFrame, aois: list[dict]) -> dic
 def extract_pupil_features(eye_df: pd.DataFrame, eye_cfg: dict) -> dict:
     if eye_df.empty:
         return {"std_pupil_diam": 0.0}
-    pupil_col = eye_cfg.get("pupil_col", DEFAULT_PUPIL_COL)
-    if pupil_col not in eye_df.columns:
+    pupil_col = eye_cfg.get("pupil_col")
+    if not pupil_col or pupil_col not in eye_df.columns:
         return {"std_pupil_diam": 0.0}
     series = pd.to_numeric(eye_df[pupil_col], errors="coerce")
     missing_val = eye_cfg.get("missing", 0.0)
@@ -89,52 +87,46 @@ def extract_pupil_features(eye_df: pd.DataFrame, eye_cfg: dict) -> dict:
 # Public API
 # ---------------------------------------------------------------------------
 
-from .eye_features import extract_eyetracking_features
-from .game_features import extract_game_features
 
-
-def extract_features(cfg: dict) -> pd.DataFrame:
-    """Extract per-trial features for _best trials.
+def extract_features(data: dict, cfg: dict) -> pd.DataFrame:
+    """Extract per-trial features for all subjects, trials, and games.
 
     Args:
-        cfg:         Full config dict.
-        preloaded:   {subject_id: {trial_id: {"game": df, "eyetracker": df}}}
-        eyetracking: Output of run_eyetracking_features() —
-                     {"fixations": {sid: {trial_id: {"fixations": df, ...}}},
-                      "saccades":  {sid: {trial_id: {"saccades":  df, ...}}},
-                      "aoi":       {sid: {trial_id: {"fix_aoi": df, "transitions": df, ...}}}}
+        data: Nested dict with structure data[sub][trial][game].
+        cfg:  Full config dict.
 
     Returns:
-        DataFrame with one row per best trial.
+        DataFrame with one row per game.
     """
-    subjects = [str(s) for s in cfg.get("sub", [])]
-    trials = cfg["trails"]
     expertise = cfg.get("expertise", {})
 
-    # Load the .h5 file which you saved from previous step
-    data = None
+    rows = []
+    for sub in data:
+        for trial in data[sub]:
+            for game in data[sub][trial]:
+                game_data = data[sub][trial][game].get("game")
+                eye_data = data[sub][trial][game].get("eye_tracking")
 
-    for sid in subjects:
-        for trial_id in trials:
-            data[sid][trial_id][runs]  # Look how to loop over runs
+                eye_features = extract_eyetracking_features(eye_data, cfg)
+                game_features = extract_game_features(game_data)
+                game_features.pop("victims_per_step", None)
 
-            game_data = data[sid][trial_id][runs]["game"]
-            eye_data = data[sid][trial_id][runs]["eye_tracking"]
+                row = {
+                    "participant": sub,
+                    "trial": trial,
+                    "game": game,
+                    "expertise": expertise.get(sub, "unknown"),
+                    **eye_features,
+                    **game_features,
+                }
 
-            eye_features = extract_eyetracking_features(eye_data, cfg)
-            game_features = extract_game_features(game_data, cfg)
+                print(
+                    f"  {sub}  {trial}  {game}  "
+                    f"victims={row.get('saved_victims', '?')}  "
+                    f"fixations={row.get('n_fixations', '?')}  "
+                    f"saccades={row.get('n_saccades', '?')}"
+                )
 
-            row = {
-                "participant": subject_label(sid, cfg),
-                "trial": trial_id,
-                "category": category,
-                "expertise": expertise.get(sid, "unknown"),
-            }
+                rows.append(row)
 
-            print(
-                f"  {sid}  {trial_id:35s}  victims={row.get('saved_victims', '?')}  "
-                f"fixations={row.get('n_fixations', '?')}  saccades={row.get('n_saccades', '?')}"
-            )
-
-    df = pd.DataFrame(rows)
-    return df
+    return pd.DataFrame(rows)

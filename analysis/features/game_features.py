@@ -31,19 +31,23 @@ def _reward_by_unique_progress_state(game_df: pd.DataFrame) -> pd.Series:
 def extract_game_features(game_data) -> dict:
 
     deduped_reward = _reward_by_unique_progress_state(game_data)
-    cumulative_reward = float(deduped_reward.sum()) if not deduped_reward.empty else 0.0
-    features = {
+    if deduped_reward.empty:
+        cumulative_reward = None
+        mean_reward = None
+    else:
+        cumulative_reward = float(deduped_reward.sum())
+        mean_reward = float(deduped_reward.mean())
+
+    max_steps = game_data["step_count"].max()
+    saved_victims = int(game_data["saved_victims"].max())
+
+    return {
         "n_actions": int(game_data["action"].notna().sum()),
         "n_llm_calls": int(game_data["llm_response"].notna().sum())
         if "llm_response" in game_data.columns
-        else 0,
-        "saved_victims": int(game_data["saved_victims"].max()),
-        "mean_reward": float(reward.mean()) if not reward.empty else 0.0,
+        else None,
+        "saved_victims": saved_victims,
+        "mean_reward": mean_reward,
         "total_reward": cumulative_reward,
-        "cumulative_reward": cumulative_reward,
+        "victims_per_step": (saved_victims / max_steps) if max_steps else None,
     }
-    max_steps = game_data["step_count"].max()
-    features["victims_per_step"] = (
-        (features["saved_victims"] / max_steps) if max_steps else 0.0
-    )
-    return features
