@@ -2,6 +2,7 @@ import pandas as pd
 
 
 from analysis.features.conventions import (
+    DEFAULT_OFFSCREEN_LABEL,
     DEFAULT_PUPIL_COL,
     best_suffix,
     detect_category,
@@ -24,7 +25,7 @@ def extract_fixation_features(fix_df: pd.DataFrame, fix_aoi_df: pd.DataFrame, ao
         features["mean_fixation_dur_ms"]  = 0.0
         features["total_fixation_dur_ms"] = 0.0
 
-    labels = [a["name"] for a in aois]
+    labels = [a["name"] for a in aois] + [DEFAULT_OFFSCREEN_LABEL]
     for aoi in labels:
         features[f"{aoi}_pct_dur"] = 0.0
         features[f"n_fixations_{aoi}"] = 0
