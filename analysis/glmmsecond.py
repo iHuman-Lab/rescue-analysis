@@ -1,8 +1,9 @@
-from pathlib import Path
+from math import erfc, sqrt
 
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
+from statsmodels.genmod.bayes_mixed_glm import PoissonBayesMixedGLM
 from statsmodels.stats.multitest import multipletests
 from analysis.features.conventions import condition_for_category
 
@@ -39,8 +40,15 @@ def prepare_df(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     return df[keep]
 
 
-def run_glmm(df: pd.DataFrame, outcome: str):
-    """Fit one mixed LM for one outcome."""
+def _normal_approx_p_value(coef: float, se: float) -> float:
+    if se is None or pd.isna(se) or se == 0:
+        return np.nan
+    z_score = abs(coef / se)
+    return erfc(z_score / sqrt(2.0))
+
+
+def run_glmm(df: pd.DataFrame, outcome: str, count_features: list[str]):
+    """Fit an LMM for continuous outcomes and a Poisson GLMM for count outcomes."""
     if outcome not in df.columns:
         return None
 
@@ -53,36 +61,70 @@ def run_glmm(df: pd.DataFrame, outcome: str):
         " * C(expertise, Treatment('novice'))"
     )
     try:
+        if outcome in count_features:
+            if (clean[outcome] < 0).any():
+                return None
+            random = {"participant": "0 + C(participant)"}
+            model = PoissonBayesMixedGLM.from_formula(formula, random, clean).fit_vb()
+            return {
+                "model_type": "poisson_glmm",
+                "terms": [
+                    {
+                        "term": term,
+                        "coef": coef,
+                        "se": se,
+                        "p_value": _normal_approx_p_value(coef, se),
+                    }
+                    for term, coef, se in zip(model.model.exog_names, model.fe_mean, model.fe_sd)
+                ],
+            }
+
         model = smf.mixedlm(formula, clean, groups=clean["participant"]).fit()
-    except np.linalg.LinAlgError:
+        return {
+            "model_type": "linear_mixedlm",
+            "terms": [
+                {
+                    "term": term,
+                    "coef": model.params[term],
+                    "se": model.bse.get(term),
+                    "p_value": model.pvalues.get(term),
+                }
+                for term in model.params.index
+            ],
+        }
+    except (np.linalg.LinAlgError, ValueError):
         return None
-    return model
 
 
 def run_all(
     cfg: dict,
     dataframes: dict,
 ) -> pd.DataFrame:
-    """Run one GLMM per feature for each dataset."""
-    features = cfg["glmm2"]["continuous"] + cfg["glmm2"]["count"]
+    """Run one mixed-effects model per feature for each dataset."""
+    continuous_features = cfg["glmm2"]["continuous"]
+    count_features = cfg["glmm2"]["count"]
+    features = continuous_features + count_features
     rows = []
 
     for name, df in dataframes.items():
+        if df is None or df.empty:
+            continue
         prepared = prepare_df(df, cfg)
         for outcome in features:
-            model = run_glmm(prepared, outcome)
-            if model is None:
+            result = run_glmm(prepared, outcome, count_features)
+            if result is None:
                 continue
 
-            for term in model.params.index:
+            for term_result in result["terms"]:
                 rows.append(
                     {
                         "dataset": name,
                         "outcome": outcome,
-                        "term": term,
-                        "coef": model.params[term],
-                        "se": model.bse.get(term),
-                        "p_value": model.pvalues.get(term),
+                        "model_type": result["model_type"],
+                        "term": term_result["term"],
+                        "coef": term_result["coef"],
+                        "se": term_result["se"],
+                        "p_value": term_result["p_value"],
                     }
                 )
 

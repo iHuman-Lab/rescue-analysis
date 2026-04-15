@@ -74,9 +74,19 @@ glmm2:
   verbose: true
   output_file: glmm2_results.csv
   group_col: participant
-  continuous: [victims_per_step, total_reward, cumulative_reward, mean_fixation_dur_ms, std_pupil_diam,
+  continuous: [victims_per_step, total_reward, mean_fixation_dur_ms, std_pupil_diam,
                game_area_pct_dur, chat_panel_pct_dur, offscreen_pct_dur]
   count:      [n_fixations, n_saccades, saved_victims]
+  multivariate:
+    output_file: glmm2_multivariate_results.csv
+    draws: 200
+    tune: 200
+    chains: 2
+    target_accept: 0.9
+    random_seed: 42
+    coding:
+      condition_true: llm
+      expertise_true: expert
 
 eyetracker:
   x_col:       avg_gaze_point_x   # normalized 0-1 (no PsychoPy window set during recording)
