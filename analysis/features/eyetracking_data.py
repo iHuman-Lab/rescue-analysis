@@ -29,14 +29,7 @@ def _preprocess_eye(eye_df: pd.DataFrame, eye_cfg: dict):
     return eye_df, x, y, time
 
 
-def detect_fixations(eye_df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
-    if eye_df is None or eye_df.empty:
-        return pd.DataFrame(columns=FIXATION_COLUMNS)
-
-    eye_cfg = cfg.get("eyetracker", {})
-    fix_cfg = cfg.get("fixation", {})
-    _, x, y, time = _preprocess_eye(eye_df, eye_cfg)
-
+def _detect_fixations(x, y, time, eye_cfg: dict, fix_cfg: dict) -> pd.DataFrame:
     _, Efix = fixation_detection(
         x=x, y=y, time=time,
         missing=eye_cfg["missing"],
@@ -46,14 +39,7 @@ def detect_fixations(eye_df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     return pd.DataFrame(Efix or [], columns=FIXATION_COLUMNS)
 
 
-def detect_saccades(eye_df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
-    if eye_df is None or eye_df.empty:
-        return pd.DataFrame(columns=SACCADE_COLUMNS)
-
-    eye_cfg = cfg.get("eyetracker", {})
-    sac_cfg = cfg.get("saccade", {})
-    _, x, y, time = _preprocess_eye(eye_df, eye_cfg)
-
+def _detect_saccades(x, y, time, eye_cfg: dict, sac_cfg: dict) -> pd.DataFrame:
     _, end_saccades = saccade_detection(
         x, y, time,
         missing=eye_cfg["missing"],
@@ -61,7 +47,6 @@ def detect_saccades(eye_df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
         maxvel=sac_cfg["maxvel"],
         maxacc=sac_cfg["maxacc"],
     )
-
     raw_cols = ["start_ms", "end_ms", "duration_ms", "x_start", "y_start", "x_end", "y_end"]
     sac_df = pd.DataFrame(end_saccades or [], columns=raw_cols)
 
@@ -73,7 +58,6 @@ def detect_saccades(eye_df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
         )
     else:
         sac_df = pd.DataFrame(columns=SACCADE_COLUMNS)
-
     return sac_df
 
 
@@ -83,9 +67,18 @@ def run_eyetracking(eye_df: pd.DataFrame, cfg: dict) -> dict:
     Returns:
         {"fixations": DataFrame, "saccades": DataFrame}
     """
+    if eye_df is None or eye_df.empty:
+        return {
+            "fixations": pd.DataFrame(columns=FIXATION_COLUMNS),
+            "saccades": pd.DataFrame(columns=SACCADE_COLUMNS),
+        }
+
+    eye_cfg = cfg.get("eyetracker", {})
+    _, x, y, time = _preprocess_eye(eye_df, eye_cfg)
+
     return {
-        "fixations": detect_fixations(eye_df, cfg),
-        "saccades": detect_saccades(eye_df, cfg),
+        "fixations": _detect_fixations(x, y, time, eye_cfg, cfg.get("fixation", {})),
+        "saccades": _detect_saccades(x, y, time, eye_cfg, cfg.get("saccade", {})),
     }
 
 
