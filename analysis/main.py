@@ -1,0 +1,32 @@
+from pathlib import Path
+
+import yaml
+from features.extract_features import extract_features
+from model.glmmsecond import run_all as run_glmmsecond
+from prepare_data.data import split_all_data_by_trial
+from utils import skip_run
+
+with open("configs/analysis.yml") as f:
+    cfg = yaml.safe_load(f)
+
+
+with skip_run("run", "split_data") as check, check():
+    preloaded = split_all_data_by_trial(cfg)
+
+with skip_run("run", "extract_features") as check, check():
+    df = extract_features(preloaded, cfg)
+    processed_dir = Path(cfg["paths"]["processed"])
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    out = processed_dir / "features_all_subjects.csv"
+    df.to_csv(out, index=False)
+    print(f"\nfeatures -> {out}")
+
+with skip_run("run", "glmmsecond") as check, check():
+    glmm_results = run_glmmsecond(cfg, dataframes={"best_features": df})
+    if glmm_results is not None and not glmm_results.empty:
+        processed_dir = Path(cfg["paths"]["processed"])
+        filename = cfg.get("glmm2", {}).get("output_file", "glmm2_results.csv")
+        out = processed_dir / filename
+        out.parent.mkdir(parents=True, exist_ok=True)
+        glmm_results.to_csv(out, index=False)
+        print(f"\nglmmsecond -> {out}")

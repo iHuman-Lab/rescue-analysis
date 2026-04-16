@@ -51,7 +51,7 @@ def parse_eye(
     return ts, data, cols
 
 
-def split_by_trial(
+def split_streams_by_trial(
     game_stream: dict,
     eye_stream: dict,
     cfg: dict,

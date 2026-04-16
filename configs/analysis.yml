@@ -1,6 +1,6 @@
 sub:
-- P001
-- P002
+  - P001
+  - P002
 # #- P003
 # - P004
 # - P005
@@ -10,7 +10,7 @@ sub:
 # - P009
 # # - P010
 
-trails: [ gemini, openai, dummy ]
+trials: [gemini, openai, dummy]
 # Participant expertise: expert or novice
 # Add each subject ID here; subjects not listed default to 'unknown'
 expertise:
@@ -25,52 +25,40 @@ expertise:
   # P009: novice
   # P010: expert
 
-
 paths:
   raw: data/raw # raw XDF files per subject
-  intermediate: data/intermediate # output of xdf.py
+  interim: data/interim
   processed: data/processed # output of fixations/saccades
 
 analysis:
   offscreen_label: offscreen
-  categories: [ gemini, openai, dummy ]
   condition_by_category:
     dummy: no_llm
     gemini: llm
     openai: llm
   outputs:
-    best_features_file: best_features.csv
     fixation_aoi_file: fixations_aoi.csv
     aoi_transitions_file: aoi_transitions.csv
-    aoi_transitions_all_file: aoi_transitions_all.csv
-    aoi_transitions_by_trial_template: "aoi_transitions_{trial}.csv"
 
 xdf:
   game_stream: SARGame
   eye_stream: TobiiEyeTracker
   trial_field: trial_id
-  episode_end_fields: [ terminated, truncated ]
-  active_status_field: mission_status
-  active_status_value: continue
-  output:
-    subject_dir_template: "sub-{subject_id}"
-    run_key_template: "{trial_id}_run{run_index}"
-    best_dir_template: "{base}_best"
-    run_suffix_pattern: "_run\\d+$"
-    write_csv: true
-    write_hdf: true
-    files:
-      game_csv: game.csv
-      eyetracker_csv: eyetracker.csv
-      game_h5: game.h5
-      eyetracker_h5: eyetracker.h5
+  episode_end_fields: [terminated, truncated]
 
 glmm2:
-  verbose: true
   output_file: glmm2_results.csv
-  group_col: participant
-  continuous: [ victims_per_step, total_reward, mean_fixation_dur_ms, std_pupil_diam, game_area_pct_dur, chat_panel_pct_dur, offscreen_pct_dur ]
-  count: [ n_fixations, n_saccades, saved_victims ]
+  continuous:
+    [
+      victims_per_step,
+      total_reward,
+      mean_fixation_dur_ms,
+      std_pupil_diam,
+      game_area_pct_dur,
+      chat_panel_pct_dur,
+      offscreen_pct_dur,
+    ]
+  count: [n_fixations, n_saccades, saved_victims]
   multivariate:
     output_file: glmm2_multivariate_results.csv
     draws: 200
@@ -92,16 +80,16 @@ eyetracker:
   missing: 0.0 # value used for missing/invalid samples
 
   channels:
-  # column from tobii
-  - device_time_stamp
-  - avg_gaze_point_x
-  - avg_gaze_point_y
-  - avg_pupil_diam
-  - avg_eye_pos_x
-  - avg_eye_pos_y
-  - avg_eye_pos_z
-  - avg_eye_distance
-  - eye_validities
+    # column from tobii
+    - device_time_stamp
+    - avg_gaze_point_x
+    - avg_gaze_point_y
+    - avg_pupil_diam
+    - avg_eye_pos_x
+    - avg_eye_pos_y
+    - avg_eye_pos_z
+    - avg_eye_distance
+    - eye_validities
 
 fixation:
   maxdist: 25 # max inter-sample distance in pixels
@@ -111,25 +99,36 @@ fixation:
 
 saccade:
   minlen: 10
-  maxvel: 80 #pixel/s (alsmost 22 deg/s at 72cm viewing distance) https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
+  maxvel: 80 # pixel/s (alsmost 22 deg/s at 72cm viewing distance) https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
   maxacc: 1500 # acceleration threshold in pixels/s²   As sampling is 58HZ, https://iopscience.iop.org/article/10.1088/1361-6579/ab159d/ampdf
-  columns: [saccade_id, start_ms, end_ms, duration_ms, x_start, y_start, x_end, y_end, amplitude]
+  columns:
+    [
+      saccade_id,
+      start_ms,
+      end_ms,
+      duration_ms,
+      x_start,
+      y_start,
+      x_end,
+      y_end,
+      amplitude,
+    ]
 
 aoi:
-- name: game_area
-  x_min: 150
-  y_min: 0
-  x_max: 1230
-  y_max: 1080
+  - name: game_area
+    x_min: 150
+    y_min: 0
+    x_max: 1230
+    y_max: 1080
 
-- name: info_panel
-  x_min: 1230
-  y_min: 0
-  x_max: 1770
-  y_max: 540
+  - name: info_panel
+    x_min: 1230
+    y_min: 0
+    x_max: 1770
+    y_max: 540
 
-- name: chat_panel
-  x_min: 1230
-  y_min: 540
-  x_max: 1770
-  y_max: 1080
+  - name: chat_panel
+    x_min: 1230
+    y_min: 540
+    x_max: 1770
+    y_max: 1080

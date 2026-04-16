@@ -1,6 +1,5 @@
 """Quick visualization of AOI panels defined in config_analysis.yml."""
 
-import sys
 from pathlib import Path
 
 import matplotlib.patches as mpatches
@@ -13,22 +12,22 @@ CONFIG = ROOT / "configs" / "config_analysis.yml"
 with open(CONFIG) as f:
     cfg = yaml.safe_load(f)
 
-screen_w = cfg["eyetracker"]["screen_w"]
-screen_h = cfg["eyetracker"]["screen_h"]
-aois     = cfg.get("aoi", [])
+SCREEN_W = cfg["eyetracker"]["screen_w"]
+SCREEN_H = cfg["eyetracker"]["screen_h"]
+AOIS     = cfg.get("aoi", [])
 
 COLORS = ["#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B3"]
 
 fig, ax = plt.subplots(figsize=(10, 6))
-ax.set_xlim(0, screen_w)
-ax.set_ylim(screen_h, 0)          # y-axis: top = 0 (screen convention)
+ax.set_xlim(0, SCREEN_W)
+ax.set_ylim(SCREEN_H, 0)          # y-axis: top = 0 (screen convention)
 ax.set_aspect("equal")
 ax.set_facecolor("#f0f0f0")
-ax.set_title(f"AOI panels  ({screen_w}×{screen_h} screen)", fontsize=13)
+ax.set_title(f"AOI panels  ({SCREEN_W}×{SCREEN_H} screen)", fontsize=13)
 ax.set_xlabel("x (px)")
 ax.set_ylabel("y (px)")
 
-for i, aoi in enumerate(aois):
+for i, aoi in enumerate(AOIS):
     x      = aoi["x_min"]
     y      = aoi["y_min"]
     w      = aoi["x_max"] - aoi["x_min"]

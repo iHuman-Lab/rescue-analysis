@@ -1,6 +1,6 @@
 import pandas as pd
 
-from .AOI_fixation import build_aoi_features, run_aoi
+from .aoi_fixation import build_aoi_features, run_aoi
 from .eyetracking_data import build_eye_features, run_eyetracking
 from .game_features import extract_game_features
 

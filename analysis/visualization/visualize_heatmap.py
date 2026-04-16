@@ -2,6 +2,7 @@
 import argparse
 from pathlib import Path
 
+import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
@@ -113,7 +114,6 @@ def plot_heatmap(fix_df, title, out_path):
 
     # background screenshot
     if SCREENSHOT.exists():
-        import matplotlib.image as mpimg
         bg = mpimg.imread(str(SCREENSHOT))
         ax.imshow(bg, origin="upper", extent=[0, SCREEN_W, SCREEN_H, 0],
                   aspect="auto", zorder=0)
