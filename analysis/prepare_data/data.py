@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pyxdf
 
-from analysis.prepare_data.h5 import open_store
-from analysis.prepare_data.parse import get_stream, split_streams_by_trial
+from .h5 import open_store
+from .parse import get_stream, split_streams_by_trial
 
 
 def process_subject(subject_id: str, cfg: dict) -> dict[str, dict[int, dict]]:

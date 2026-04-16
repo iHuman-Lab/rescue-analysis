@@ -1,9 +1,9 @@
 sub:
   - P001
   - P002
-# #- P003
-# - P004
-# - P005
+  - P003
+  - P004
+  - P005
 # - P006
 # - P007
 # - P008
@@ -14,11 +14,11 @@ trials: [gemini, openai, dummy]
 # Participant expertise: expert or novice
 # Add each subject ID here; subjects not listed default to 'unknown'
 expertise:
-  P001: expert
-  P002: novice
-  # P003: novice
-  # P004: novice
-  # P005: expert
+  P001: novice
+  P002: expert
+  P003: novice
+  P004: novice
+  P005: expert
   # P006: novice
   # P007: novice
   # P008: expert

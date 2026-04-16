@@ -7,8 +7,37 @@ from statsmodels.genmod.bayes_mixed_glm import PoissonBayesMixedGLM
 from statsmodels.stats.multitest import multipletests
 
 
+def prepare_df(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    """Select the best run per participant/trial and encode model columns."""
+    condition_map = cfg.get("analysis", {}).get("condition_by_category", {})
+    metric = cfg.get("glmm2", {}).get("best_run_metric", "saved_victims")
+    count_features = cfg["glmm2"]["count"]
+    features = cfg["glmm2"]["continuous"] + count_features
+
+    best = (
+        df.sort_values(metric, ascending=False)
+        .groupby(["participant", "trial"], as_index=False)
+        .first()
+        .rename(columns={"trial": "category"})
+    )
+
+    best["condition"] = best["category"].map(condition_map).fillna("unknown")
+    best["condition"] = pd.Categorical(best["condition"], categories=["no_llm", "llm"])
+    best["expertise"] = pd.Categorical(
+        best["expertise"], categories=["novice", "expert"]
+    )
+    keep = ["participant", "category", "condition", "expertise"] + features
+    return best[keep].reset_index(drop=True)
+
+
 def run_glmm(df: pd.DataFrame, outcome: str, count_features: list[str]) -> dict:
     """Fit an LMM for continuous outcomes and a Poisson GLMM for count outcomes."""
+    model_df = df[
+        ["participant", "condition", "expertise", outcome]
+    ].dropna().reset_index(drop=True)
+    if model_df.empty:
+        return {"model_type": "skipped", "terms": []}
+
     formula = (
         f"{outcome} ~ C(condition, Treatment('no_llm'))"
         " * C(expertise, Treatment('novice'))"
@@ -16,7 +45,7 @@ def run_glmm(df: pd.DataFrame, outcome: str, count_features: list[str]) -> dict:
 
     if outcome in count_features:
         model = PoissonBayesMixedGLM.from_formula(
-            formula, {"participant": "0 + C(participant)"}, df
+            formula, {"participant": "0 + C(participant)"}, model_df
         ).fit_vb()
         return {
             "model_type": "poisson_glmm",
@@ -32,7 +61,7 @@ def run_glmm(df: pd.DataFrame, outcome: str, count_features: list[str]) -> dict:
             ],
         }
 
-    model = smf.mixedlm(formula, df, groups=df["participant"]).fit()
+    model = smf.mixedlm(formula, model_df, groups=model_df["participant"]).fit()
     return {
         "model_type": "linear_mixedlm",
         "terms": [
@@ -49,8 +78,6 @@ def run_glmm(df: pd.DataFrame, outcome: str, count_features: list[str]) -> dict:
 
 def run_all(cfg: dict, dataframes: dict) -> pd.DataFrame:
     """Select best run per participant/category, then run one mixed model per feature."""
-    condition_map = cfg.get("analysis", {}).get("condition_by_category", {})
-    metric = cfg.get("glmm2", {}).get("best_run_metric", "saved_victims")
     count_features = cfg["glmm2"]["count"]
     features = cfg["glmm2"]["continuous"] + count_features
     rows = []
@@ -60,19 +87,7 @@ def run_all(cfg: dict, dataframes: dict) -> pd.DataFrame:
             continue
 
         # Select best run per participant per trial, rename trial → category
-        best = (
-            df.sort_values(metric, ascending=False)
-              .groupby(["participant", "trial"], as_index=False)
-              .first()
-              .rename(columns={"trial": "category"})
-        )
-
-        # Add condition and encode categoricals
-        best["condition"] = best["category"].map(condition_map).fillna("unknown")
-        best["condition"] = pd.Categorical(best["condition"], categories=["no_llm", "llm"])
-        best["expertise"] = pd.Categorical(best["expertise"], categories=["novice", "expert"])
-        keep = ["participant", "category", "condition", "expertise"] + features
-        prepared = best[keep]
+        prepared = prepare_df(df, cfg)
 
         for outcome in features:
             result = run_glmm(prepared, outcome, count_features)
