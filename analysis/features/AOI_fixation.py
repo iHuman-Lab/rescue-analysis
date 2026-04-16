@@ -48,3 +48,34 @@ def aoi_transition_matrix(fix_aoi_df: pd.DataFrame, aois: list[dict]) -> pd.Data
         if src in matrix.index and dst in matrix.columns:
             matrix.loc[src, dst] += 1
     return matrix
+
+
+def aoi_labels(aois: list[dict], offscreen_label: str = DEFAULT_OFFSCREEN_LABEL) -> list[str]:
+    """Return all AOI names plus the offscreen label."""
+    return [a["name"] for a in aois] + [offscreen_label]
+
+
+def build_aoi_features(
+    fix_aoi: pd.DataFrame,
+    trans: pd.DataFrame,
+    aois: list[dict],
+    offscreen_label: str = DEFAULT_OFFSCREEN_LABEL,
+) -> dict:
+    """Build AOI feature dict from labeled fixations and transition matrix."""
+    dur, counts = aoi_fixation_stats(fix_aoi)
+    total_dur = float(dur.sum())
+    labels = aoi_labels(aois, offscreen_label)
+
+    pct_dur = {
+        f"{a}_pct_dur": float(dur.get(a, 0.0) / total_dur) if total_dur > 0 else None
+        for a in labels
+    }
+    fix_counts = {f"n_fixations_{a}": int(counts.get(a, 0)) for a in labels}
+    transitions = {
+        f"transitions_{src}_{dst}": int(trans.loc[src, dst])
+        for src in labels
+        for dst in labels
+        if src in trans.index and dst in trans.columns
+    } if not trans.empty else {}
+
+    return {**pct_dur, **fix_counts, **transitions}

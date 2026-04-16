@@ -87,3 +87,30 @@ def run_eyetracking(eye_df: pd.DataFrame, cfg: dict) -> dict:
         "fixations": detect_fixations(eye_df, cfg),
         "saccades": detect_saccades(eye_df, cfg),
     }
+
+
+def build_eye_features(
+    fix_df: pd.DataFrame,
+    sac_df: pd.DataFrame,
+    eye_df: pd.DataFrame,
+    eye_cfg: dict,
+) -> dict:
+    """Build eye-tracking feature dict from fixations, saccades, and raw eye data."""
+    pupil_col = eye_cfg.get("pupil_col")
+    if not eye_df.empty and pupil_col and pupil_col in eye_df.columns:
+        pupil = pd.to_numeric(eye_df[pupil_col], errors="coerce")
+        pupil = pupil.replace(eye_cfg.get("missing", 0.0), pd.NA).dropna()
+        std_pupil = float(pupil.std()) if not pupil.empty else None
+    else:
+        std_pupil = None
+
+    return {
+        "n_fixations": len(fix_df),
+        "mean_fixation_dur_ms": float(fix_df["duration_ms"].mean()) if not fix_df.empty else None,
+        "total_fixation_dur_ms": float(fix_df["duration_ms"].sum()) if not fix_df.empty else None,
+        "n_saccades": len(sac_df),
+        "mean_saccade_dur_ms": float(sac_df["duration_ms"].mean()) if not sac_df.empty else None,
+        "mean_saccade_amp_px": float(sac_df["amplitude"].mean()) if not sac_df.empty else None,
+        "saccades_total_duration_ms": float(sac_df["duration_ms"].sum()) if not sac_df.empty else None,
+        "std_pupil_diam": std_pupil,
+    }
