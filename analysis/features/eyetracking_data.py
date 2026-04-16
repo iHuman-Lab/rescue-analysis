@@ -4,12 +4,6 @@ from igaze.detectors import fixation_detection, saccade_detection
 
 "The reason we used this: https://link.springer.com/article/10.3758/s13428-013-0422-2"
 
-FIXATION_COLUMNS: list[str] = ["start_ms", "end_ms", "duration_ms", "x", "y"]
-SACCADE_COLUMNS: list[str] = [
-    "saccade_id", "start_ms", "end_ms", "duration_ms",
-    "x_start", "y_start", "x_end", "y_end", "amplitude",
-]
-
 
 def _preprocess_eye(eye_df: pd.DataFrame, eye_cfg: dict):
     """Preprocess eye-tracking DataFrame and return (df, x, y, time) arrays."""
@@ -36,7 +30,7 @@ def _detect_fixations(x, y, time, eye_cfg: dict, fix_cfg: dict) -> pd.DataFrame:
         maxdist=fix_cfg["maxdist"],
         mindur=fix_cfg["mindur"],
     )
-    return pd.DataFrame(Efix or [], columns=FIXATION_COLUMNS)
+    return pd.DataFrame(Efix or [], columns=fix_cfg["columns"])
 
 
 def _detect_saccades(x, y, time, eye_cfg: dict, sac_cfg: dict) -> pd.DataFrame:
@@ -57,7 +51,7 @@ def _detect_saccades(x, y, time, eye_cfg: dict, sac_cfg: dict) -> pd.DataFrame:
             sac_df["y_end"] - sac_df["y_start"],
         )
     else:
-        sac_df = pd.DataFrame(columns=SACCADE_COLUMNS)
+        sac_df = pd.DataFrame(columns=sac_cfg["columns"])
     return sac_df
 
 
@@ -67,18 +61,21 @@ def run_eyetracking(eye_df: pd.DataFrame, cfg: dict) -> dict:
     Returns:
         {"fixations": DataFrame, "saccades": DataFrame}
     """
+    fix_cfg = cfg.get("fixation", {})
+    sac_cfg = cfg.get("saccade", {})
+
     if eye_df is None or eye_df.empty:
         return {
-            "fixations": pd.DataFrame(columns=FIXATION_COLUMNS),
-            "saccades": pd.DataFrame(columns=SACCADE_COLUMNS),
+            "fixations": pd.DataFrame(columns=fix_cfg["columns"]),
+            "saccades": pd.DataFrame(columns=sac_cfg["columns"]),
         }
 
     eye_cfg = cfg.get("eyetracker", {})
     _, x, y, time = _preprocess_eye(eye_df, eye_cfg)
 
     return {
-        "fixations": _detect_fixations(x, y, time, eye_cfg, cfg.get("fixation", {})),
-        "saccades": _detect_saccades(x, y, time, eye_cfg, cfg.get("saccade", {})),
+        "fixations": _detect_fixations(x, y, time, eye_cfg, fix_cfg),
+        "saccades": _detect_saccades(x, y, time, eye_cfg, sac_cfg),
     }
 
 

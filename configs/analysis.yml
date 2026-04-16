@@ -107,11 +107,13 @@ fixation:
   maxdist: 25 # max inter-sample distance in pixels
   mindur: 100 # min fixation duration in ms
   #maxdur:  700   # max fixation duration in ms (removes tracking artifacts)
+  columns: [start_ms, end_ms, duration_ms, x, y]
 
 saccade:
   minlen: 10
   maxvel: 80 #pixel/s (alsmost 22 deg/s at 72cm viewing distance) https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
   maxacc: 1500 # acceleration threshold in pixels/s²   As sampling is 58HZ, https://iopscience.iop.org/article/10.1088/1361-6579/ab159d/ampdf
+  columns: [saccade_id, start_ms, end_ms, duration_ms, x_start, y_start, x_end, y_end, amplitude]
 
 aoi:
 - name: game_area
