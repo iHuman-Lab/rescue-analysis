@@ -10,7 +10,7 @@ from statsmodels.stats.multitest import multipletests
 def prepare_df(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     """Select the best run per participant/trial and encode model columns."""
     condition_map = cfg.get("analysis", {}).get("condition_by_category", {})
-    metric = cfg.get("glmm2", {}).get("best_run_metric", "saved_victims")
+    metric = cfg.get("glmm2", {}).get("best_run_metric")
     count_features = cfg["glmm2"]["count"]
     features = cfg["glmm2"]["continuous"] + count_features
 
@@ -32,9 +32,11 @@ def prepare_df(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
 
 def run_glmm(df: pd.DataFrame, outcome: str, count_features: list[str]) -> dict:
     """Fit an LMM for continuous outcomes and a Poisson GLMM for count outcomes."""
-    model_df = df[
-        ["participant", "condition", "expertise", outcome]
-    ].dropna().reset_index(drop=True)
+    model_df = (
+        df[["participant", "condition", "expertise", outcome]]
+        .dropna()
+        .reset_index(drop=True)
+    )
     if model_df.empty:
         return {"model_type": "skipped", "terms": []}
 
@@ -54,10 +56,13 @@ def run_glmm(df: pd.DataFrame, outcome: str, count_features: list[str]) -> dict:
                     "term": term,
                     "coef": coef,
                     "se": se,
-                    "p_value": np.nan if (se is None or pd.isna(se) or se == 0)
-                               else erfc(abs(coef / se) / sqrt(2.0)),
+                    "p_value": np.nan
+                    if (se is None or pd.isna(se) or se == 0)
+                    else erfc(abs(coef / se) / sqrt(2.0)),
                 }
-                for term, coef, se in zip(model.model.exog_names, model.fe_mean, model.fe_sd)
+                for term, coef, se in zip(
+                    model.model.exog_names, model.fe_mean, model.fe_sd
+                )
             ],
         }
 
@@ -92,7 +97,12 @@ def run_all(cfg: dict, dataframes: dict) -> pd.DataFrame:
         for outcome in features:
             result = run_glmm(prepared, outcome, count_features)
             rows.extend(
-                {"dataset": name, "outcome": outcome, "model_type": result["model_type"], **term}
+                {
+                    "dataset": name,
+                    "outcome": outcome,
+                    "model_type": result["model_type"],
+                    **term,
+                }
                 for term in result["terms"]
             )
 

@@ -10,7 +10,7 @@ sub:
 # - P009
 # # - P010
 
-trials: [gemini, openai, dummy]
+trials: [ gemini, openai, dummy ]
 # Participant expertise: expert or novice
 # Add each subject ID here; subjects not listed default to 'unknown'
 expertise:
@@ -44,10 +44,11 @@ xdf:
   game_stream: SARGame
   eye_stream: TobiiEyeTracker
   trial_field: trial_id
-  episode_end_fields: [terminated, truncated]
+  episode_end_fields: [ terminated, truncated ]
 
 glmm2:
   output_file: glmm2_results.csv
+  best_run_metric: saved_victims
   continuous:
     [
       victims_per_step,
@@ -58,7 +59,7 @@ glmm2:
       chat_panel_pct_dur,
       offscreen_pct_dur,
     ]
-  count: [n_fixations, n_saccades, saved_victims]
+  count: [ n_fixations, n_saccades, saved_victims ]
   multivariate:
     output_file: glmm2_multivariate_results.csv
     draws: 200
@@ -95,7 +96,7 @@ fixation:
   maxdist: 25 # max inter-sample distance in pixels
   mindur: 100 # min fixation duration in ms
   #maxdur:  700   # max fixation duration in ms (removes tracking artifacts)
-  columns: [start_ms, end_ms, duration_ms, x, y]
+  columns: [ start_ms, end_ms, duration_ms, x, y ]
 
 saccade:
   minlen: 10
