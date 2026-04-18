@@ -27,22 +27,32 @@ def prepare_df(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     return best[keep].reset_index(drop=True)
 
 
-def run_glmm(df: pd.DataFrame, outcome: str) -> dict:
-    """Fit a linear mixed-effects model for all outcomes."""
-    model_df = (
-        df[["participant", "condition", "expertise", outcome]]
-        .dropna()
-        .reset_index(drop=True)
-    )
-    if model_df.empty:
-        return {"model_type": "skipped", "terms": []}
-
-    formula = (
+def _fixed_effect_formula(outcome: str) -> str:
+    return (
         f"{outcome} ~ C(condition, Treatment('no_llm'))"
         " * C(expertise, Treatment('novice'))"
     )
 
-    model = smf.mixedlm(formula, model_df, groups=model_df["participant"]).fit()
+
+def run_glmm(df: pd.DataFrame, outcome: str) -> dict:
+    """Fit a linear mixed-effects model with participant and category random intercepts."""
+    model_df = (
+        df[["participant", "category", "condition", "expertise", outcome]]
+        .dropna()
+        .reset_index(drop=True)
+    )
+    if model_df.empty:
+        return {"model_type": "skipped", "terms": [], "variance_terms": []}
+
+    formula = _fixed_effect_formula(outcome)
+
+    model = smf.mixedlm(
+        formula,
+        model_df,
+        groups=model_df["participant"],
+        re_formula="1",
+        vc_formula={"category": "0 + C(category)"},
+    ).fit()
     return {
         "model_type": "linear_mixedlm",
         "terms": [
@@ -52,13 +62,27 @@ def run_glmm(df: pd.DataFrame, outcome: str) -> dict:
                 "se": model.bse.get(term),
                 "p_value": model.pvalues.get(term),
             }
-            for term in model.params.index
+            for term in model.fe_params.index
+        ],
+        "variance_terms": [
+            {
+                "term": "participant_random_intercept_var",
+                "coef": float(model.cov_re.iloc[0, 0]),
+                "se": np.nan,
+                "p_value": np.nan,
+            },
+            {
+                "term": "category_random_intercept_var",
+                "coef": float(model.vcomp[0]) if len(model.vcomp) else np.nan,
+                "se": np.nan,
+                "p_value": np.nan,
+            },
         ],
     }
 
 
 def run_all(cfg: dict, dataframes: dict) -> pd.DataFrame:
-    """Select best run per participant/category, then run one mixed model per feature."""
+    """Select best runs and fit one linear mixed-effects model per outcome."""
     count_features = cfg["glmm2"]["count"]
     features = cfg["glmm2"]["continuous"] + count_features
     rows = []
@@ -80,6 +104,15 @@ def run_all(cfg: dict, dataframes: dict) -> pd.DataFrame:
                     **term,
                 }
                 for term in result["terms"]
+            )
+            rows.extend(
+                {
+                    "dataset": name,
+                    "outcome": outcome,
+                    "model_type": result["model_type"],
+                    **term,
+                }
+                for term in result.get("variance_terms", [])
             )
 
     results = pd.DataFrame(rows)
