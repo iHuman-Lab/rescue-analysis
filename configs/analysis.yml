@@ -9,6 +9,8 @@ sub:
   - P008
   - P009
   - P010
+  - P011
+  - P012
 
 trials: [ gemini, openai, dummy ]
 # Participant expertise: expert or novice
@@ -17,13 +19,15 @@ expertise:
   P001: novice
   P002: expert
   P003: novice
-  P004: novice
-  P005: expert
+  P004: expert
+  P005: novice
   P006: novice
   P007: expert
   P008: novice
-  P009: novice
+  P009: expert
   P010: expert
+  P011: novice
+  P012: novice
 
 paths:
   raw: data/raw # raw XDF files per subject
