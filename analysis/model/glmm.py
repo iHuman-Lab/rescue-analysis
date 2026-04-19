@@ -4,31 +4,8 @@ import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 
 
-def prepare_df(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
-    """Select the best run per participant/trial and encode model columns."""
-    condition_map = cfg.get("analysis", {}).get("condition_by_category", {})
-    metric = cfg.get("glmm2", {}).get("best_run_metric")
-    count_features = cfg["glmm2"]["count"]
-    features = cfg["glmm2"]["continuous"] + count_features
-
-    best = (
-        df.sort_values(metric, ascending=False)
-        .groupby(["participant", "trial"], as_index=False)
-        .first()
-        .rename(columns={"trial": "category"})
-    )
-
-    best["condition"] = best["category"].map(condition_map).fillna("unknown")
-    best["condition"] = pd.Categorical(best["condition"], categories=["no_llm", "llm"])
-    best["expertise"] = pd.Categorical(
-        best["expertise"], categories=["novice", "expert"]
-    )
-    keep = ["participant", "category", "condition", "expertise"] + features
-    return best[keep].reset_index(drop=True)
-
-
 def run_glmm(df: pd.DataFrame, outcome: str) -> dict:
-    """Fit a linear mixed-effects model for all outcomes."""
+    """Fit a linear mixed-effects model with a participant random intercept."""
     model_df = (
         df[["participant", "condition", "expertise", outcome]]
         .dropna()
@@ -41,8 +18,12 @@ def run_glmm(df: pd.DataFrame, outcome: str) -> dict:
         f"{outcome} ~ C(condition, Treatment('no_llm'))"
         " * C(expertise, Treatment('novice'))"
     )
-
-    model = smf.mixedlm(formula, model_df, groups=model_df["participant"]).fit()
+    model = smf.mixedlm(
+        formula,
+        model_df,
+        groups=model_df["participant"].values,
+        re_formula="1",
+    ).fit()
     return {
         "model_type": "linear_mixedlm",
         "terms": [
@@ -52,13 +33,14 @@ def run_glmm(df: pd.DataFrame, outcome: str) -> dict:
                 "se": model.bse.get(term),
                 "p_value": model.pvalues.get(term),
             }
-            for term in model.params.index
+            for term in model.fe_params.index
         ],
     }
 
 
 def run_all(cfg: dict, dataframes: dict) -> pd.DataFrame:
-    """Select best run per participant/category, then run one mixed model per feature."""
+    """Run one mixed model per feature across all runs (participant random intercept handles repeated measures)."""
+    condition_map = cfg.get("analysis", {}).get("condition_by_category", {})
     count_features = cfg["glmm2"]["count"]
     features = cfg["glmm2"]["continuous"] + count_features
     rows = []
@@ -67,8 +49,31 @@ def run_all(cfg: dict, dataframes: dict) -> pd.DataFrame:
         if df is None or df.empty:
             continue
 
-        # Select best run per participant per trial, rename trial → category
-        prepared = prepare_df(df, cfg)
+        subjects = cfg.get("sub", [])
+        if subjects:
+            df = df[df["participant"].isin(subjects)]
+        if df.empty:
+            continue
+
+        metric = cfg.get("glmm2", {}).get("best_run_metric", "saved_victims")
+        df = (
+            df.sort_values(metric, ascending=False)
+            .groupby(["participant", "trial"], as_index=False)
+            .first()
+        )
+        df = df.rename(columns={"trial": "category"})
+        df["condition"] = df["category"].map(condition_map).fillna("unknown")
+        df["condition"] = pd.Categorical(df["condition"], categories=["no_llm", "llm"])
+        df["expertise"] = pd.Categorical(
+            df["expertise"], categories=["novice", "expert"]
+        )
+
+        keep = ["participant", "condition", "expertise"] + features
+        prepared = df[keep].reset_index(drop=True)
+
+        for col in count_features:
+            if col in prepared.columns:
+                prepared[col] = np.log1p(prepared[col])
 
         for outcome in features:
             result = run_glmm(prepared, outcome)

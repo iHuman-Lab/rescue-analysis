@@ -1,11 +1,27 @@
+from pathlib import Path
+
 import pandas as pd
 
 from .aoi_fixation import build_aoi_features, run_aoi
-from .eyetracking_data import build_eye_features, run_eyetracking
+from .eye_tracking_features import build_eye_features, run_eyetracking
 from .game_features import extract_game_features
 
 
-def extract_features(data: dict, cfg: dict) -> pd.DataFrame:
+def load_data_from_h5(cfg: dict) -> dict:
+    """Read data.h5 and return the same nested dict as split_all_data_by_trial."""
+    h5_path = Path(cfg["paths"]["processed"]) / "data.h5"
+    data: dict = {}
+    with pd.HDFStore(str(h5_path), mode="r") as store:
+        for key in store.keys():
+            _, sid, trial, run_dir, stream = key.split("/")
+            run_num = int(run_dir.replace("run_", ""))
+            data.setdefault(sid, {}).setdefault(trial, {}).setdefault(run_num, {})[
+                stream
+            ] = store[key]
+    return data
+
+
+def extract_features(cfg: dict) -> pd.DataFrame:
     """Extract per-trial features for all subjects and trials.
 
     Args:
@@ -19,6 +35,9 @@ def extract_features(data: dict, cfg: dict) -> pd.DataFrame:
     offscreen_label = cfg.get("analysis", {}).get("offscreen_label", "offscreen")
     eye_cfg = cfg.get("eyetracker", {})
     expertise = cfg.get("expertise", {})
+
+    # Read the data.h5 here
+    data = load_data_from_h5(cfg)
 
     rows = []
     for sub, trials in data.items():

@@ -25,7 +25,9 @@ def _preprocess_eye(eye_df: pd.DataFrame, eye_cfg: dict):
 
 def _detect_fixations(x, y, time, eye_cfg: dict, fix_cfg: dict) -> pd.DataFrame:
     _, Efix = fixation_detection(
-        x=x, y=y, time=time,
+        x=x,
+        y=y,
+        time=time,
         missing=eye_cfg["missing"],
         maxdist=fix_cfg["maxdist"],
         mindur=fix_cfg["mindur"],
@@ -35,13 +37,23 @@ def _detect_fixations(x, y, time, eye_cfg: dict, fix_cfg: dict) -> pd.DataFrame:
 
 def _detect_saccades(x, y, time, eye_cfg: dict, sac_cfg: dict) -> pd.DataFrame:
     _, end_saccades = saccade_detection(
-        x, y, time,
+        x,
+        y,
+        time,
         missing=eye_cfg["missing"],
         minlen=sac_cfg["minlen"],
         maxvel=sac_cfg["maxvel"],
         maxacc=sac_cfg["maxacc"],
     )
-    raw_cols = ["start_ms", "end_ms", "duration_ms", "x_start", "y_start", "x_end", "y_end"]
+    raw_cols = [
+        "start_ms",
+        "end_ms",
+        "duration_ms",
+        "x_start",
+        "y_start",
+        "x_end",
+        "y_end",
+    ]
     sac_df = pd.DataFrame(end_saccades or [], columns=raw_cols)
 
     if not sac_df.empty:
@@ -96,11 +108,21 @@ def build_eye_features(
 
     return {
         "n_fixations": len(fix_df),
-        "mean_fixation_dur_ms": float(fix_df["duration_ms"].mean()) if not fix_df.empty else None,
-        "total_fixation_dur_ms": float(fix_df["duration_ms"].sum()) if not fix_df.empty else None,
+        "mean_fixation_dur_ms": float(fix_df["duration_ms"].mean())
+        if not fix_df.empty
+        else None,
+        "total_fixation_dur_ms": float(fix_df["duration_ms"].sum())
+        if not fix_df.empty
+        else None,
         "n_saccades": len(sac_df),
-        "mean_saccade_dur_ms": float(sac_df["duration_ms"].mean()) if not sac_df.empty else None,
-        "mean_saccade_amp_px": float(sac_df["amplitude"].mean()) if not sac_df.empty else None,
-        "saccades_total_duration_ms": float(sac_df["duration_ms"].sum()) if not sac_df.empty else None,
+        "mean_saccade_dur_ms": float(sac_df["duration_ms"].mean())
+        if not sac_df.empty
+        else None,
+        "mean_saccade_amp_px": float(sac_df["amplitude"].mean())
+        if not sac_df.empty
+        else None,
+        "saccades_total_duration_ms": float(sac_df["duration_ms"].sum())
+        if not sac_df.empty
+        else None,
         "std_pupil_diam": std_pupil,
     }

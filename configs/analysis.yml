@@ -3,7 +3,7 @@ sub:
   - P002
   - P003
   - P004
-  - P005
+  # - P005 # Eye features are way off
   - P006
   - P007
   - P008
@@ -11,13 +11,14 @@ sub:
   - P010
   - P011
   - P012
+  - P013
 
 trials: [ gemini, openai, dummy ]
 # Participant expertise: expert or novice
 # Add each subject ID here; subjects not listed default to 'unknown'
 expertise:
   P001: novice
-  P002: expert
+  P002: novice
   P003: novice
   P004: expert
   P005: novice
@@ -26,8 +27,9 @@ expertise:
   P008: novice
   P009: expert
   P010: expert
-  P011: novice
+  P011: expert
   P012: novice
+  P013: novice
 
 paths:
   raw: data/raw # raw XDF files per subject
@@ -61,8 +63,7 @@ glmm2:
       std_pupil_diam,
       game_area_pct_dur,
       chat_panel_pct_dur,
-      offscreen_pct_dur,
-    ]
+    ] # offscreen_pct_dur,
   count: [ n_fixations, n_saccades, saved_victims ]
   multivariate:
     output_file: glmm2_multivariate_results.csv
