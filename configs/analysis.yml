@@ -1,0 +1,174 @@
+sub:
+  - P001
+  # - P002
+  # - P003
+  # - P004
+  # # - P005 # Eye features are way off
+  # - P006
+  # - P007
+  # - P008
+  # - P009
+  # - P010
+  # - P011
+  # - P012
+  # - P013
+
+trials: [gemini, openai, dummy]
+# Participant expertise: expert or novice
+# Add each subject ID here; subjects not listed default to 'unknown'
+expertise:
+  P001: novice
+  P002: novice
+  P003: novice
+  P004: expert
+  P005: novice
+  P006: novice
+  P007: expert
+  P008: novice
+  P009: expert
+  P010: expert
+  P011: expert
+  P012: novice
+  P013: novice
+
+paths:
+  raw: data/raw # raw XDF files per subject
+  interim: data/interim
+  processed: data/processed # output of fixations/saccades
+  mosaic_src: ../mosaic/src # sibling repo, needed only by optimal_pickup_analysis
+
+analysis:
+  offscreen_label: offscreen
+  condition_by_category:
+    dummy: no_llm
+    gemini: llm
+    openai: llm
+  outputs:
+    fixation_aoi_file: fixations_aoi.csv
+    aoi_transitions_file: aoi_transitions.csv
+
+xdf:
+  game_stream: SARGame
+  eye_stream: TobiiEyeTracker
+  trial_field: trial_id
+  episode_end_fields: [terminated, truncated]
+
+glmm2:
+  output_file: glmm2_results.csv
+  best_run_metric: saved_victims
+  continuous: [
+      victims_per_step,
+      total_reward,
+      mean_fixation_dur_ms,
+      std_pupil_diam,
+      game_area_pct_dur,
+      chat_panel_pct_dur,
+    ] # offscreen_pct_dur,
+  count: [n_fixations, n_saccades, saved_victims]
+  multivariate:
+    output_file: glmm2_multivariate_results.csv
+    draws: 200
+    tune: 200
+    chains: 2
+    target_accept: 0.9
+    random_seed: 42
+    coding:
+      condition_true: llm
+      expertise_true: expert
+
+eyetracker:
+  x_col: avg_gaze_point_x # normalized 0-1 (no PsychoPy window set during recording)
+  y_col: avg_gaze_point_y # normalized 0-1 (no PsychoPy window set during recording)
+  time_col: timestamp
+  pupil_col: avg_pupil_diam
+  screen_w: 1920 # screen width in pixels  (used to scale normalized -> pixels)
+  screen_h: 1080 # screen height in pixels (used to scale normalized -> pixels)
+  missing: 0.0 # value used for missing/invalid samples
+
+  channels:
+    # column from tobii
+    - device_time_stamp
+    - avg_gaze_point_x
+    - avg_gaze_point_y
+    - avg_pupil_diam
+    - avg_eye_pos_x
+    - avg_eye_pos_y
+    - avg_eye_pos_z
+    - avg_eye_distance
+    - eye_validities
+
+fixation:
+  maxdist: 25 # max inter-sample distance in pixels
+  mindur: 100 # min fixation duration in ms
+  #maxdur:  700   # max fixation duration in ms (removes tracking artifacts)
+  columns: [start_ms, end_ms, duration_ms, x, y]
+
+saccade:
+  minlen: 10
+  maxvel: 80 # pixel/s (alsmost 22 deg/s at 72cm viewing distance) https://link.springer.com/article/10.3758/s13428-013-0422-2?utm_source=chatgpt.com
+  maxacc: 1500 # acceleration threshold in pixels/s²   As sampling is 58HZ, https://iopscience.iop.org/article/10.1088/1361-6579/ab159d/ampdf
+  columns:
+    [
+      saccade_id,
+      start_ms,
+      end_ms,
+      duration_ms,
+      x_start,
+      y_start,
+      x_end,
+      y_end,
+      amplitude,
+    ]
+
+aoi:
+  # ── Screen-space AOIs ──────────────────────────────────────────────────────
+  - name: game_area
+    type: dynamic # viewport: fixations mapped to grid tiles at runtime
+    x_min: 150
+    y_min: 0
+    x_max: 1230
+    y_max: 1080
+
+  - name: info_panel
+    type: static # fixed bounding-box UI panel
+    x_min: 1230
+    y_min: 0
+    x_max: 1770
+    y_max: 540
+
+  - name: chat_panel
+    type: static # fixed bounding-box UI panel
+    x_min: 1230
+    y_min: 540
+    x_max: 1770
+    y_max: 1080
+
+  # ── Grid tile AOIs (identified by game tile ID, inside game_area) ──────────
+  # positional: true (default) → label includes grid coords, e.g. victim_3_5
+  # positional: false          → label is just the name (many instances, not tracked)
+  - name: victim
+    type: tile
+    tile_id: 5
+
+  - name: fake_victim
+    type: tile
+    tile_id: 6
+
+  - name: lava
+    type: tile
+    tile_id: 4
+
+  - name: door
+    type: tile
+    tile_id_min: 10 # inclusive
+    tile_id_max: 28 # exclusive
+
+  - name: key
+    type: tile
+    tile_id_min: 30 # inclusive
+    tile_id_max: 36 # exclusive
+
+  - name: wall
+    type: tile
+    tile_id: 1
+    positional: false # label as "wall", not "wall_x_y" — not tracked per instance
