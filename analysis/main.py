@@ -4,7 +4,9 @@ import pandas as pd
 import yaml
 from features.extract_features import extract_features
 from features.gaze_entropy import run_entropy_grouped
-from features.general_gaze_features import build_features_dataset as build_general_gaze_features
+from features.general_gaze_features import (
+    build_features_dataset as build_general_gaze_features,
+)
 from features.victim_aoi import run_object_aoi
 from features.vs_mot_kmeans import run_vs_mot_kmeans
 from model.glmm import run_all as run_glmmsecond
@@ -12,8 +14,11 @@ from model.help_vs_auto import build_features_dataset as build_help_vs_auto_feat
 from model.help_vs_auto import run_models as run_help_vs_auto_models
 from model.help_vs_auto_stepwin import run as run_help_vs_auto_stepwin
 from model.power_analysis import run as run_power_analysis
+from model.pupil_stl import run as run_pupil_stl
+from model.pupil_stl_dtw import run as run_pupil_stl_dtw
 from prepare_data.data import split_all_data_by_trial
 from utils import skip_run
+
 # from validate_aoi_fixations import run_validation
 
 with open("configs/analysis.yml") as f:
@@ -67,6 +72,11 @@ with skip_run("skip", "help_vs_auto_features") as check, check():
 with skip_run("skip", "help_vs_auto_models") as check, check():
     run_help_vs_auto_models(cfg)
 
-with skip_run("run", "help_vs_auto_stepwin") as check, check():
+with skip_run("skip", "help_vs_auto_stepwin") as check, check():
     run_help_vs_auto_stepwin(cfg)
 
+with skip_run("skip", "pupil_stl") as check, check():
+    run_pupil_stl(cfg)
+
+with skip_run("skip", "pupil_stl_dtw") as check, check():
+    run_pupil_stl_dtw(cfg)  # needs pupil_stl_traces.csv from the pupil_stl step

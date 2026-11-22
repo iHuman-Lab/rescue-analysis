@@ -114,6 +114,23 @@ help_vs_auto:
        #revisit_count,
     ]
 
+# Pupil-SD workload trace + probabilistic STL monitor (analysis/model/pupil_stl.py)
+pupil_stl:
+  window_s: 5 # rolling pupil-SD window
+  n_boot: 100 # within-window bootstrap draws for the SD range
+  n_models: 50 # logistic ensemble size (calibration, leave-one-participant-out)
+  tau: 0.75 # spec threshold: P(high workload) <= tau
+  spec_window_s: 30 # Historically_[0, W]
+  beta: 50 # log-sum-exp sharpness of the soft-min
+  min_participants: 3 # participants needed at a time point to plot a group curve
+  sweep_spec_window_s: [5, 10, 15, 30, 60, 120] # spec windows W compared at pickup
+  sweep_tau: [0.5, 0.55, 0.6, 0.65, 0.75] # thresholds compared in the predicate exploration
+  tau_grid: [0.5, 0.9, 0.02] # start, stop, step for the threshold sweep
+  event_pre_s: 30 # event-locked window before a pickup
+  event_post_s: 15 # ... and after it
+  exclude_participants: [P011] # excluded from the pupil/STL analysis (outlier in the DTW distances)
+  seed: 0
+
 xdf:
   game_stream: SARGame
   eye_stream: TobiiEyeTracker
